@@ -25,9 +25,25 @@
        | "else"         => Parser.ELSE pos
        | "int"          => Parser.INT pos
        | "return"       => Parser.RETURN pos
+       | "while"        => Parser.WHILE pos
+       | "char"         => Parser.CHAR pos
        | _              => Parser.ID (s, pos)
 
+ fun character (s, pos, lexbuf) =
+     val char = String.substring(s, 1, s.size-2)
+     case Char.fromCString (char) of
+          NONE      => lexerError lexbuf "Invalid character"
+        (*| SOME #"'" => lexerError lexbuf "Invalid character"*)
+        | SOME c    => Parser.CHARCONST (c, pos)           (* HANDLE LEXICAL ERROR *)
+
+ fun string (s, pos, lexbuf) =
+     val str = String.substring(s, 1, s.size-2)
+     case String.fromCString (str) of
+          NONE      => lexerError lexbuf "Invalid string"
+        | SOME c    => Parser.STRINGCONST (c, pos)           (* HANDLE LEXICAL ERROR *)
+
  }
+
 
 rule Token = parse
     [` ` `\t` `\r`]+    { Token lexbuf } (* whitespace *)
@@ -42,9 +58,12 @@ rule Token = parse
                              | SOME i => Parser.NUM (i, getPos lexbuf) }
   | [`a`-`z` `A`-`Z`] [`a`-`z` `A`-`Z` `0`-`9` `_`]*
                         { keyword (getLexeme lexbuf,getPos lexbuf) }
-  | `'`([` `-`!` `#`-`&` `(`-`[` `]`-`~`])|(`\`[`a` `b` `f` `n` `r` `t` `v` `\` `?` `'` `"`])`'`
-                        { Parser.CHAR (c, getPos lexbuf) } (* THIS IS NOT RIGHT YET*)
-  | `"`[` `-`~`]`"` (* THIS IS NOT RIGHT YET *)
+  | `*`[`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*
+                        { Parser.REF (getLexeme lexbuf, getPos lexbuf) }
+  | `'`(`\`([` `-`~`]|[0-7][0-7][0-7]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
+                        { character (getLexeme lexbuf, getPos lexbuf, lexbuf) }
+  | `"`(`\`([` `-`~`]|[0-7][0-7][0-7]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
+                        { string (getLexeme lexbuf, getPos lexbuf, lexbuf) }
   | `+`                 { Parser.PLUS (getPos lexbuf) }
   | `-`                 { Parser.MINUS (getPos lexbuf) }
   | `<`                 { Parser.LESS (getPos lexbuf) }
@@ -54,6 +73,8 @@ rule Token = parse
   | `,`                 { Parser.COMMA (getPos lexbuf) }
   | `;`                 { Parser.SEMICOLON (getPos lexbuf) }
   | eof                 { Parser.EOF (getPos lexbuf) }
+  | `{`                 { Parser.BEGINBLOCK (getPos lexbuf) }
+  | `}`                 { Parser.ENDBLOCK (getPos lexbuf) }
   | "=="                { Parser.EQUAL (getPos lexbuf) }
   | _                   { lexerError lexbuf "Illegal symbol in input" }
 

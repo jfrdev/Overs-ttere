@@ -1,12 +1,11 @@
-%token <string*(int*int)> ID
+%token <string*(int*int)> ID REF
 %token <int*(int*int)> NUM
-%token <(int*int)> IF THEN ELSE INT RETURN
-%token <(int*int)> PLUS MINUS LESS ASSIGN
-%token <(int*int)> LPAR RPAR
+%token <(int*int)> IF THEN ELSE INT RETURN CHAR WHILE
+%token <(int*int)> PLUS MINUS LESS ASSIGN EQUAL
+%token <(int*int)> LPAR RPAR BEGINBLOCK ENDBLOCK
 %token <(int*int)> COMMA SEMICOLON EOF
-%token <string*(int*int)> CHAR
-%token <string*(int*int)> STRING
-%token <(int*int)> EQUAL
+%token <char*(int*int) CHARCONST
+%token <string*(int*int)> STRINGCONST
 
 %right ELSE
 %right ASSIGN
