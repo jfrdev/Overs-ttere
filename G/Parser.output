@@ -603,5 +603,5 @@ state 55
 	.  reduce 15
 
 
-19 terminals, 15 nonterminals
+21 terminals, 15 nonterminals
 31 grammar rules, 56 states

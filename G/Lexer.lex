@@ -42,6 +42,9 @@ rule Token = parse
                              | SOME i => Parser.NUM (i, getPos lexbuf) }
   | [`a`-`z` `A`-`Z`] [`a`-`z` `A`-`Z` `0`-`9` `_`]*
                         { keyword (getLexeme lexbuf,getPos lexbuf) }
+  | `'`([` `-`!` `#`-`&` `(`-`[` `]`-`~`])|(`\`[`a` `b` `f` `n` `r` `t` `v` `\` `?` `'` `"`])`'`
+                        { Parser.CHAR (c, getPos lexbuf) } (* THIS IS NOT RIGHT YET*)
+  | `"`[` `-`~`]`"` (* THIS IS NOT RIGHT YET *)
   | `+`                 { Parser.PLUS (getPos lexbuf) }
   | `-`                 { Parser.MINUS (getPos lexbuf) }
   | `<`                 { Parser.LESS (getPos lexbuf) }
@@ -51,6 +54,7 @@ rule Token = parse
   | `,`                 { Parser.COMMA (getPos lexbuf) }
   | `;`                 { Parser.SEMICOLON (getPos lexbuf) }
   | eof                 { Parser.EOF (getPos lexbuf) }
+  | "=="                { Parser.EQUAL (getPos lexbuf) }
   | _                   { lexerError lexbuf "Illegal symbol in input" }
 
 ;
