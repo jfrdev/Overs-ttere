@@ -30,18 +30,16 @@
        | _              => Parser.ID (s, pos)
 
  fun character (s, pos, lexbuf) =
-     val char = String.substring(s, 1, s.size-2)
-     case Char.fromCString (char) of
+     val chr = String.substring(s, 1, s.size-2)
+     case Char.fromCString (chr) of
           NONE      => lexerError lexbuf "Invalid character"
-        (*| SOME #"'" => lexerError lexbuf "Invalid character"*)
-        | SOME c    => Parser.CHARCONST (c, pos)           (* HANDLE LEXICAL ERROR *)
+        | SOME c    => Parser.CHARCONST (c, pos)
 
  fun string (s, pos, lexbuf) =
      val str = String.substring(s, 1, s.size-2)
      case String.fromCString (str) of
           NONE      => lexerError lexbuf "Invalid string"
-        | SOME c    => Parser.STRINGCONST (c, pos)           (* HANDLE LEXICAL ERROR *)
-
+        | SOME c    => Parser.STRINGCONST (c, pos)
  }
 
 
@@ -58,11 +56,13 @@ rule Token = parse
                              | SOME i => Parser.NUM (i, getPos lexbuf) }
   | [`a`-`z` `A`-`Z`] [`a`-`z` `A`-`Z` `0`-`9` `_`]*
                         { keyword (getLexeme lexbuf,getPos lexbuf) }
-  | `*`[`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*
+  | `*`[` `]*[`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*
                         { Parser.REF (getLexeme lexbuf, getPos lexbuf) }
-  | `'`(`\`([` `-`~`]|[0-7][0-7][0-7]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
+  | [`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*[` `]*`*`
+                        { Parser.DEREF (getLexeme lexbuf, getPos lexbuf) }
+  | `'`(`\`([` `-`~`]|[`0`-`7`][`0`-`7`][`0`-`7`]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
                         { character (getLexeme lexbuf, getPos lexbuf, lexbuf) }
-  | `"`(`\`([` `-`~`]|[0-7][0-7][0-7]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
+  | `"`(`\`([` `-`~`]|[`0`-`7`][`0`-`7`][`0`-`7`]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
                         { string (getLexeme lexbuf, getPos lexbuf, lexbuf) }
   | `+`                 { Parser.PLUS (getPos lexbuf) }
   | `-`                 { Parser.MINUS (getPos lexbuf) }
@@ -77,5 +77,4 @@ rule Token = parse
   | `}`                 { Parser.ENDBLOCK (getPos lexbuf) }
   | "=="                { Parser.EQUAL (getPos lexbuf) }
   | _                   { lexerError lexbuf "Illegal symbol in input" }
-
 ;
