@@ -60,9 +60,11 @@ rule Token = parse
                         { Parser.REF (getLexeme lexbuf, getPos lexbuf) }
   | [`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*[` `]*`*`
                         { Parser.DEREF (getLexeme lexbuf, getPos lexbuf) }
-  | `'`(`\`([` `-`~`]|[`0`-`7`][`0`-`7`][`0`-`7`]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
+  | [`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*`[`[`0`-`9`]*`]`
+                        { Parser.LOOKUP (getLexeme lexbuf, getPos lexbuf) }
+  | `'`(`\`([` `-`~`]|[`0`-`1`][`0`-`9`][`0`-`9`]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
                         { character (getLexeme lexbuf, getPos lexbuf, lexbuf) }
-  | `"`(`\`([` `-`~`]|[`0`-`7`][`0`-`7`][`0`-`7`]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
+  | `"`(`\`([` `-`~`]|[`0`-`9`][`0`-`9`][`0`-`9`]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
                         { string (getLexeme lexbuf, getPos lexbuf, lexbuf) }
   | `+`                 { Parser.PLUS (getPos lexbuf) }
   | `-`                 { Parser.MINUS (getPos lexbuf) }

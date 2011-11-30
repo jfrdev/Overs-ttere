@@ -1,4 +1,4 @@
-%token <string*(int*int)> ID REF DEREF
+%token <string*(int*int)> ID REF DEREF LOOKUP
 %token <int*(int*int)> NUM
 %token <char*(int*int) CHARCONST
 %token <string*(int*int)> STRINGCONST
