@@ -56,15 +56,9 @@ rule Token = parse
                              | SOME i => Parser.NUM (i, getPos lexbuf) }
   | [`a`-`z` `A`-`Z`] [`a`-`z` `A`-`Z` `0`-`9` `_`]*
                         { keyword (getLexeme lexbuf,getPos lexbuf) }
-  | `*`[` `]*[`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*                        (* FIX THIS *)
-                        { Parser.REF (getLexeme lexbuf, getPos lexbuf) }
-  | [`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*[` `]*`*`                        (* FIX THIS *)
-                        { Parser.DEREF (getLexeme lexbuf, getPos lexbuf) }
-  | [`a`-`z` `A`-`Z`][`a`-`z` `A`-`Z` `0`-`9` `_`]*`[` [^`]`] `]`                   (* FIX THIS *)
-                        { Parser.LOOKUP (getLexeme lexbuf, getPos lexbuf) }
   | `'`(`\`([` `-`~`]|[`0`-`1`][`0`-`9`][`0`-`9`]) | [` `-`!` `#`-`&` `(`-`[` `]`-`~`])`'`
                         { character (getLexeme lexbuf, getPos lexbuf, lexbuf) }
-  | `"`(`\`([` `-`~`]|[`0`-`9`][`0`-`9`][`0`-`9`]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
+  | `"`(`\`([` `-`~`]|[`0`-`1`][`0`-`9`][`0`-`9`]) | [` `-`!` `#`-`[` `]`-`~`])*`"`
                         { string (getLexeme lexbuf, getPos lexbuf, lexbuf) }
   | `+`                 { Parser.PLUS (getPos lexbuf) }
   | `-`                 { Parser.MINUS (getPos lexbuf) }
@@ -75,8 +69,11 @@ rule Token = parse
   | `,`                 { Parser.COMMA (getPos lexbuf) }
   | `;`                 { Parser.SEMICOLON (getPos lexbuf) }
   | eof                 { Parser.EOF (getPos lexbuf) }
-  | `{`                 { Parser.BEGINBLOCK (getPos lexbuf) }
-  | `}`                 { Parser.ENDBLOCK (getPos lexbuf) }
+  | `{`                 { Parser.LBLOCK (getPos lexbuf) }
+  | `}`                 { Parser.RBLOCK (getPos lexbuf) }
   | "=="                { Parser.EQUAL (getPos lexbuf) }
+  | `*`                 { Parser.REF (getPos lexbuf) }
+  | `[`                 { Parser.LBRACKET (getPos lexbuf) }
+  | `]`                 { Parser.RBRACKET (getPos lexbuf) }
   | _                   { lexerError lexbuf "Illegal symbol in input" }
 ;
