@@ -3,20 +3,17 @@ This file contains what we need to get done, and what it is expected for
 us to have done every week. Furthermore our current process is also tracked.
 
 
-
 ## List of pending issues
 
-* Implement blocks and lookups in the parser
+* Implement blocks
 * Test lexer and compiler together
-
-
+* Write the parts of the report on lexer and parser
 
 
 ## Implemented
 
-* Almost every element of the lexer
-* Most of the parser (check precedence)
-
+* The lexer should be done (test it before removing this parenthesis)
+* The parser is almost done (check precedence and test it)
 
 
 ## Expected Milestones
@@ -40,7 +37,6 @@ rapportafsnit om denne skrives.
 ### Uge 51
 Afsluttende afprøvning og rapportskrivning,
 rapporten aﬂeveres om torsdagen.
-
 
 ### Bemærk!
 ...at typechecker og kodegenerering er væsentligt større opgaver end lexer
