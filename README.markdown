@@ -3,9 +3,10 @@ This file contains what we need to get done, and what it is expected for
 us to have done every week. Furthermore our current process is also tracked.
 
 
-## List of pending issues
+## Pending tasks/issues
 
-* Implement blocks
+* The parser currently have 8 shift-reduce conflicts -- FIX THOSE!
+* Implement blocks in parser
 * Test lexer and compiler together
 * Write the parts of the report on lexer and parser
 
@@ -13,7 +14,7 @@ us to have done every week. Furthermore our current process is also tracked.
 ## Implemented
 
 * The lexer should be done (test it before removing this parenthesis)
-* The parser is almost done (check precedence and test it)
+* The parser is some of the way :/ (check precedence and test it)
 
 
 ## Expected Milestones
@@ -56,4 +57,3 @@ Jeres instruktor vil gerne løbende læse og komme med feedback til afsnit af
 rapporten. I skal dog regne med, at der kan gå noget tid, inden I får svar (så bed
 ikke om feedback lige før aﬂeveringsfristen), og I skal ikke forvente, at et afsnit
 bliver læst igennem ﬂere gange.
- 
