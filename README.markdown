@@ -4,21 +4,17 @@ us to have done every week. Furthermore our current process is also tracked.
 
 
 ## Pending tasks/issues
-
-* The parser currently have 8 shift-reduce conflicts -- FIX THOSE!
-* Implement blocks in parser
 * Test lexer and compiler together
 * Write the parts of the report on lexer and parser
+* Implement type checker
 
 
 ## Implemented
-
 * The lexer should be done (test it before removing this parenthesis)
-* The parser is some of the way :/ (check precedence and test it)
+* The parser compiles (check precedence and test it!!)
 
 
 ## Expected Milestones
-
 ### Uge 47
 Lexeren kan genereres og oversættes (husk at erklære de nye tokens i parseren).
 Rapportafsnit om lexer skrives.

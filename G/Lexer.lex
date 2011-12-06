@@ -30,14 +30,12 @@
        | _              => Parser.ID (s, pos)
 
  fun character (s, pos, lexbuf) =
-     val chr = String.substring(s, 1, s.size-2)
-     case Char.fromCString (chr) of
+     case Char.fromCString (String.substring(s, 1, String.size(s)-2)) of
           NONE      => lexerError lexbuf "Invalid character"
         | SOME c    => Parser.CHARCONST (c, pos)
 
  fun string (s, pos, lexbuf) =
-     val str = String.substring(s, 1, s.size-2)
-     case String.fromCString (str) of
+     case String.fromCString (String.substring(s, 1, String.size(s)-2)) of
           NONE      => lexerError lexbuf "Invalid string"
         | SOME c    => Parser.STRINGCONST (c, pos)
  }
