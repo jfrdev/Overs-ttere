@@ -24,7 +24,6 @@ type t__22__ = (int*int)
 type t__23__ = (int*int)
 type t__24__ = string*(int*int)
 type t__25__ = (int*int)
-type t__26__ = (int*int)
 in
 datatype token =
     ASSIGN of t__1__
@@ -51,8 +50,7 @@ datatype token =
   | RPAR of t__22__
   | SEMICOLON of t__23__
   | STRINGCONST of t__24__
-  | THEN of t__25__
-  | WHILE of t__26__
+  | WHILE of t__25__
 end;
 
 val Prog :

@@ -21,7 +21,6 @@
  fun keyword (s, pos) =
      case s of
          "if"           => Parser.IF pos
-       | "then"         => Parser.THEN pos
        | "else"         => Parser.ELSE pos
        | "int"          => Parser.INT pos
        | "return"       => Parser.RETURN pos
