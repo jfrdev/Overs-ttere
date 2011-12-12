@@ -7,6 +7,7 @@ struct
   type pos = int*int
 
   datatype Type = Int
+                | Char
 
   fun convertType (S100.Int _) = Int
 
@@ -24,6 +25,8 @@ struct
   fun checkExp e vtable ftable =
     case e of
       S100.NumConst _ => Int
+    | S100.CharConst _ => Char
+(*    | S100.StringConst _ => *)
     | S100.LV lv => checkLval lv vtable ftable
     | S100.Assign (lv,e1,p) =>
         let
@@ -36,7 +39,10 @@ struct
     | S100.Plus (e1,e2,p) =>
         (case (checkExp e1 vtable ftable,
 	       checkExp e2 vtable ftable) of
-	   (Int, Int) => Int)
+	          (Int, Int)   => Int
+            | (Char, Int)  => Int
+            | (Int, Char)  => Int
+            | (Char, Char) => Int)
     | S100.Minus (e1,e2,p) =>
         (case (checkExp e1 vtable ftable,
 	       checkExp e2 vtable ftable) of
@@ -59,8 +65,12 @@ struct
     case lv of
       S100.Var (x,p) =>
         (case lookup x vtable of
-	   SOME t => t
-	 | NONE => raise Error ("Unknown variable: "^x,p))
+	      SOME t => t
+	    | NONE => raise Error ("Unknown variable: "^x,p))
+    | S100.Deref (x,p) =>
+        (case lookup x vtable of
+          SOME t => t
+        | NONE => raise Error ("Unknown reference: "^x,p)) (*should be right?*)
 
   fun extend [] _ vtable = vtable
     | extend (S100.Val (x,p)::sids) t vtable =
