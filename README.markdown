@@ -4,9 +4,10 @@ us to have done every week. Furthermore our current process is also tracked.
 
 
 ## Pending tasks/issues
+* PARSER DOES NOT WORK!!! -- There is a problem with variable declarations :(!!!
+* Implement type checker
 * Test lexer and compiler together
 * Write the parts of the report on lexer and parser
-* Implement type checker
 
 
 ## Implemented
