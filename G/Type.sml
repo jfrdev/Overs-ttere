@@ -38,7 +38,7 @@ struct
         | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
                                t1
                              else
-                               raise Error ("Type mismatch in assignment",p)
+                               raise Error ("Type mismatch in assignment",p))
     | S100.Plus (e1,e2,p) =>
         (case (checkExp e1 vtable ftable,
 	       checkExp e2 vtable ftable) of
@@ -63,7 +63,7 @@ struct
         | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
                                Int
                              else
-                               raise Error ("Type mismatch in assignment",p)
+                               raise Error ("Type mismatch in assignment",p))
     | S100.Call (f,es,p) => 
         (case lookup f ftable of
 	      NONE => raise Error ("Unknown function: "^f,p)
@@ -81,7 +81,7 @@ struct
         | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
                                Int
                              else
-                               raise Error ("Type mismatch in assignment",p)
+                               raise Error ("Type mismatch in assignment",p))
 
   and checkLval lv vtable ftable =
     case lv of
@@ -118,31 +118,58 @@ struct
     | checkDecs ((t,sids)::ds) =
         extend (List.rev sids) (convertType t) (checkDecs ds)
 
-  fun checkStat s vtable ftable =
+  fun comparertable [] = false
+    | comparertable ((_,b)::tt) =
+        if b = true then true else comparertable tt
+ 
+  fun checkStat s vtable ftable rtable b =
     case s of
-      S100.EX e => (checkExp e vtable ftable; ())
+      S100.EX e => (checkExp e vtable ftable; rtable)
     | S100.If (e,s1,p) =>
         if checkExp e vtable ftable = Int
-	then checkStat s1 vtable ftable
-	else raise Error ("Condition should be integer",p)
+	    then (checkStat s1 vtable ftable rtable false)
+    	else raise Error ("Condition should be integer",p)
+        (*farlig*)
     | S100.IfElse (e,s1,s2,p) =>
-        if checkExp e vtable ftable = Int
-	then (checkStat s1 vtable ftable;
-	      checkStat s2 vtable ftable)
-	else raise Error ("Condition should be integer",p)
-    | S100.Return (e,p) => (checkExp e vtable ftable; ())
-    | S100.While (e,s,p) => 
-        if checkExp e vtable ftable = Int
-	then checkStat s1 vtable ftable
-	else raise Error ("Condition should be integer",p)
-    | S100.Block (ds,ss,p) => (checkDecs ds; checkStats ss vtable ftable)
+        let
+          val rtable1' = []
+          val rtable2' = []
+        in
+          if checkExp e vtable ftable = Int
+	      then (rtable1' = checkStat s1 vtable ftable [] b;
+	        rtable2' = checkStat s2 vtable ftable [] b;
+            if comparertable rtable1'=true andalso comparertable rtable2'=true then 
+              (rtable1' = checkStat s1 vtable ftable rtable b; 
+               rtable2' = checkStat s2 vtable ftable rtable b; 
+               rtable1'@rtable2')
+            else 
+              (rtable1' = checkStat s1 vtable ftable rtable false;
+               rtable2' = checkStat s2 vtable ftable rtable false; 
+               rtable1'@rtable2'))
+	      else raise Error ("Condition should be integer",p)
+        end
+        (*farlig if not then and else return*)
+    | S100.Return (e,p) => (let val x = (checkExp e vtable ftable) in
+      (x,b)::rtable end)
+    | S100.While (e,s1,p) => 
+        if checkExp e vtable ftable = Int then 
+          checkStat s1 vtable ftable rtable false
+	    else raise Error ("Condition should be integer",p)
+        (*farlig*)
+    | S100.Block (ds,ss,p) => (checkDecs ds; checkStats ss vtable ftable rtable
+    b)
 
-  fun checkStats [] _ _ = ()
-    | checkStats (s::ss) vtable ftable = (checkStat s vtable ftable;
-                                          checkStats ss vtable ftable)
+  and checkStats [] _ _ _ _ = []
+    | checkStats (s::ss) vtable ftable rtable b = 
+    (checkStat s vtable ftable rtable b; checkStats ss vtable ftable rtable b)
 
   fun checkFunDec (t,sf,decs,body,p) ftable =
-        checkStat body (checkDecs decs) ftable
+    let
+      val rtable = checkStat body (checkDecs decs) ftable [] true;
+    in
+      if comparertable rtable then () 
+      else raise Error ("Return statement missing or not guaranteed",p)
+    end
 
   fun getFuns [] ftable = ftable
     | getFuns ((t,sf,decs,_,p)::fs) ftable =
