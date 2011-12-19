@@ -118,6 +118,11 @@ struct
     | checkDecs ((t,sids)::ds) =
         extend (List.rev sids) (convertType t) (checkDecs ds)
 
+  fun compareTypes t [] = true
+    | compareTypes t1 ((t2,_)::tt) = if t1 = t2 then compareTypes t1 tt else
+      false
+        
+
   fun comparertable [] = false
     | comparertable ((_,b)::tt) =
         if b = true then true else comparertable tt
@@ -131,13 +136,12 @@ struct
     	else raise Error ("Condition should be integer",p)
         (*farlig*)
     | S100.IfElse (e,s1,s2,p) =>
-        let
-          val rtable1' = []
-          val rtable2' = []
-        in
-          if checkExp e vtable ftable = Int
-	      then (rtable1' = checkStat s1 vtable ftable [] b;
-	        rtable2' = checkStat s2 vtable ftable [] b;
+        if checkExp e vtable ftable = Int
+	      then
+            let
+              val rtable1' = checkStat s1 vtable ftable [] b
+              val rtable2' = checkStat s2 vtable ftable [] b
+            in
             if comparertable rtable1'=true andalso comparertable rtable2'=true then 
               (rtable1' = checkStat s1 vtable ftable rtable b; 
                rtable2' = checkStat s2 vtable ftable rtable b; 
@@ -145,10 +149,10 @@ struct
             else 
               (rtable1' = checkStat s1 vtable ftable rtable false;
                rtable2' = checkStat s2 vtable ftable rtable false; 
-               rtable1'@rtable2'))
-	      else raise Error ("Condition should be integer",p)
-        end
-        (*farlig if not then and else return*)
+               rtable1'@rtable2')
+            end
+	      else raise Error ("Condition should be integer",p) 
+        (*farlig if not both then and else returns*)
     | S100.Return (e,p) => (let val x = (checkExp e vtable ftable) in
       (x,b)::rtable end)
     | S100.While (e,s1,p) => 
@@ -161,14 +165,17 @@ struct
 
   and checkStats [] _ _ _ _ = []
     | checkStats (s::ss) vtable ftable rtable b = 
-    (checkStat s vtable ftable rtable b; checkStats ss vtable ftable rtable b)
+    (checkStat s vtable ftable rtable b @ checkStats ss vtable ftable rtable b)
 
   fun checkFunDec (t,sf,decs,body,p) ftable =
     let
-      val rtable = checkStat body (checkDecs decs) ftable [] true;
+      val rtable = checkStat body (checkDecs decs) ftable [] true
+      val k = (convertType t)
     in
-      if comparertable rtable then () 
-      else raise Error ("Return statement missing or not guaranteed",p)
+      case (comparertable rtable, compareTypes k rtable) of
+           (false,_)    =>  raise Error ("Return statement missing or not guaranteed",p)
+         | (_, false)   =>  raise Error ("Return statements not of the same type",p)
+         | (true, true) =>  ()
     end
 
   fun getFuns [] ftable = ftable
