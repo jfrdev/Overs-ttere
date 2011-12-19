@@ -261,7 +261,12 @@ struct
     let
       val ftable =
 	  Type.getFuns funs [("getint",([],Type.Int)),
-			     ("putint",([Type.Int],Type.Int))]
+                             ("walloc",([Type.Int],Type.Ref(Type.Int))),
+                             ("balloc",([Type.Int],Type.Ref(Type.Char))),
+                             ("getstring",([Type.Int],Type.Ref(Type.Char))),
+			     ("putint",([Type.Int],Type.Int)),
+                             ("putstring",([Type.Ref(Type.Char)],Type.Ref(Type.Char)))]
+
       val funsCode = List.concat (List.map (compileFun ftable) funs)
     in
       [Mips.TEXT "0x00400000",
@@ -291,6 +296,22 @@ struct
 	 Mips.LI ("2","5"),       (* read_int syscall *)
 	 Mips.SYSCALL,
 	 Mips.JR (RA,[]),
+
+         Mips.LABEL "putstring",  (* putstring function *)
+         Mips.LI ("2","4"),       (* print_string syscall *)
+         Mips.SYSCALL,            (* da argumentet allerede er i 4,
+                                   * skal intet flyttes *)
+         Mips.JR (RA,[]),
+
+         (* putstring tager adresse fra $4 og læser
+          * en streng fra adressen og printer den i
+          * output.
+          *)
+         (* MIPS NOTER:
+          * Mips.LI (rd, v)
+          * rd <- OR 0x00 V
+          * Tilsvare psudokode fir Load Immidiate og ligger v i rd.
+          *)
 
 	 Mips.DATA "",
 	 Mips.ALIGN "2",
