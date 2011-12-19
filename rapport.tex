@@ -5,18 +5,16 @@
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsthm,amsfonts,ulem}
 \usepackage{courier, fourier}
-%\usepackage{mdwlist}
 \usepackage[parfill]{parskip}
-%\usepackage[pdftex]{graphicx}
 \usepackage{float}
-%\usepackage{subfig}
-%\usepackage[table,x11names]{xcolor}
 
 \widowpenalty=1000
 \clubpenalty=1000
 
+\newcommand{\ra}[0]{\rightarrow}
+
 \author{Henrik Bendt \\ Jens Fredskov \\ Martin Jørgensen}
-\title{Ovversættere: Rapport omhandlende G-opgaven}
+\title{Oversættere: G-opgaven}
 \date{\today}
 
 \begin{document}
@@ -24,16 +22,67 @@
 \pagebreak
 
 \section{Indledning}
+%TODO skriv noget klogt
 
 \section{Lexer}
-% skriv om de ting der er implementeret og hvordan
-% skriv om de funktioner vi har lavet til string og char
-% en ref er kun en stjerne
-% vi matcher på hver af "{", "}"
+I lexeren har vi implementeret regulære udtryk der fanger følgende elementer:
+char-typen, while-løkker, referencer, dereferencer, opslag, streng- og tegnkonstanter,
+lighedsoperatoren og blokke.
+
+Typen char er implementeret ved blot at tilføje dette som et nøgleord i den
+eksisterende keyword-funktionen. Dette samme gælder for løkker hvor while blot
+er tilføjet som et nøgleord (Det vil så være op til parseren, at sikre, at hvad
+der kommer efter er gyldigt).
+
+Referencer og dereferencer er ikke decideret implementeret i lexeren. I stedet
+matches på * som så gives videre til parseren som en terminal. Denne kan så
+der stå forskelligt afhængigt af om den bruges til en reference eller en
+dereference.
+
+Opslag matches ikke i lexeren som et enkelt regulært udtryk, men som to udtryk
+der matcher ``['' og ``]''. Disse gives videre til parseren.
+
+For både streng- og tegnkonstanter er der lavet nye eksterne funktioner (hhv.
+string og character). De eksterne funktioner konvertere fra C-strenge til
+SML-strenge (vha. fromCString). Hvis dette fejler kastes en lexerError. Bemærk
+at der inden konverteringen er fjernet de tegn som omgiver en streng- eller
+tegnkonstant, altså '$\ldots$' og "$\ldots$". Slutteligt sørger der
+regulære udtryk til hver af de to at en del ugyldige strenge og tegn sorteret
+fra, ved kun at tage imod tegn mellem 32-126 i ASCII eller escape-sekvenser.
+%TODO dette kan godt formuleres pænere og udpensles mere.
+
+Lighedsoperatoren er blot et match på ``==''.
+
+Blokke gøres ligesom opslag, i det der matches på ``\{'' og ``\}''. Disse gives
+så som terminaler til parseren.
 
 \section{Parser}
-% skriv om parseren hvad der er implementeret
-% alt er implementeret som i den givne syntaks... andet?
+I parseren har vi implementeret følgende regler:
+\begin{align*}
+    \textit{Type}  & \ra \textbf{Char} \\
+    \textit{Sid}   & \ra \textbf{Ref Id} \\
+    \textit{Stat}  & \ra \textbf{While Lpar} \textit{ Exp } \textbf{Rpar}
+                         \textit{Stat} \\
+    \textit{Stat}  & \ra \textbf{Lblock} \textit{ Decs1 Stats } \textbf{Rblock} \\
+    \textit{Stats} & \ra \textit{Stat Stats} \\
+    \textit{Exp}   & \ra \textbf{StringConst} \\
+    \textit{Exp}   & \ra \textbf{CharConst} \\
+    \textit{Exp}   & \ra \textit{Lval} \textbf{ Assign } \textit{Exp} \\
+    \textit{Lval}  & \ra \textbf{Id Ref} \\
+    \textit{Lval}  & \ra \textbf{Id Lbracket} \textit{ Exp } \textbf{Rbracket}
+\end{align*}
+
+Her er terminaler givet i fed og nonterminaler i kursiv. Generelt er strukturen
+fra den abstrakte syntaks fuldt, og intet er blevet ændret i denne ifm.
+implementation af parseren.
+
+%TODO noget om de forskellige nonterminaler og hvorfor de er lavet som de er.
+%TODO noget om tests?
+
+En ting vi bemærkede ifm. test af parseren, var at der steder i det parsede fra
+SeeSyntax.sml stod en # i stedet for den del af strukturen som burde have været
+der. Dette viste sig dog at hænge sammen med, at SeeSyntax ikke kan vise
+strukturen hvis indlejringen bliver for dyb.
 
 \section{Typechecker}
 % Vi har fortolket således at man godt kan gøre følgende
