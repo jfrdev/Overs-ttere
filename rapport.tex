@@ -1,4 +1,4 @@
-\documentclass[a2paper, 10pt]{article}
+\documentclass[a4paper, 10pt]{article}
 \usepackage[danish]{babel}
 \usepackage[utf8x]{inputenc}
 \usepackage{ucs}
@@ -77,7 +77,7 @@ fra den abstrakte syntaks fuldt, og intet er blevet ændret i denne ifm.
 implementation af parseren.
 
 %TODO noget om de forskellige nonterminaler og hvorfor de er lavet som de er.
-%TODO noget om tests?
+%TODO noget om tests? og hvorfor der ikke er shift-reduces
 
 En ting vi bemærkede ifm. test af parseren, var at der steder i det parsede fra
 SeeSyntax.sml stod en # i stedet for den del af strukturen som burde have været
@@ -85,6 +85,12 @@ der. Dette viste sig dog at hænge sammen med, at SeeSyntax ikke kan vise
 strukturen hvis indlejringen bliver for dyb.
 
 \section{Typechecker}
+% Hvad har vi implementeret?
+% Hvordan er typer lavet
+% hvad har vi ændret markant, og hvilke funktioner har vi tilføjet
+
+% Særdeles spændende er return check :P
+
 % Vi har fortolket således at man godt kan gøre følgende
 % char *x; x* = 'a' + 1
 

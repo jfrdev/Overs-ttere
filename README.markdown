@@ -4,14 +4,14 @@ us to have done every week. Furthermore our current process is also tracked.
 
 
 ## Pending tasks/issues
-* Implement type checker
 * Write the report D:...
 * Implement the compiler o.0... the big one D:
+* Make pre-existing functions
 
 ## Implemented
 * The lexer
 * The parser
-
+* The type checker (maybeh moar test?)
 
 ## Expected Milestones
 ### Uge 47
