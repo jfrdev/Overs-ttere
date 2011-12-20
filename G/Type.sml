@@ -34,53 +34,61 @@ struct
     | S100.Assign (lv,e1,p) =>
         (case (checkLval lv vtable ftable,
                checkExp e1 vtable ftable) of 
-              (Ref(t), Ref _) => Ref(t)
-            | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then t1 else raise Error ("Type mismatch in assignment",p)
-            | (_, _)          => raise Error ("Type mismatch in assignment",p))
+          (Ref(t), Ref _) => Ref(t)
+        | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
+                               t1
+                             else
+                               raise Error ("Type mismatch in assignment",p)
     | S100.Plus (e1,e2,p) =>
         (case (checkExp e1 vtable ftable,
 	       checkExp e2 vtable ftable) of
 	      (Ref _, Ref _) => raise Error ("Can't add references",p)
-            | (Ref(t), _)    => Ref(t)
-            | (_, Ref(t))    => Ref(t)
-            | (_, _)         => Int) (* Char*Char and Int*Int *)
-     | S100.Minus (e1,e2,p) =>
+        | (Ref(t), _)    => Ref(t)
+        | (_, Ref(t))    => Ref(t)
+        | (_, _)         => Int)     
+    | S100.Minus (e1,e2,p) =>
         (case (checkExp e1 vtable ftable,
 	       checkExp e2 vtable ftable) of
-              (Ref(t1), Ref(t2)) => if t1 = t2 then Int
-                                    else raise Error ("Type mismatch in subtraction",p)
-            | (Ref(t), _)        => Ref(t)
-            | (_, Ref _)         => raise Error ("Can't subtract a reference",p)
-            | (_, _)             => Int) (* Char*Char and Int*Int *)
+          (Ref(t1), Ref(t2)) => if t1 = t2 then
+                                  Int
+                                else
+                                  raise Error ("Type mismatch in subtraction",p)
+        | (Ref(t), _)        => Ref(t)
+        | (_, Ref _)         => raise Error ("Can't subtract a reference",p)
+        | (_, _)             => Int)
     | S100.Less (e1,e2,p) =>
         (case (checkExp e1 vtable ftable, 
                checkExp e2 vtable ftable) of
-              (Ref(t), Ref _) => Int
-            | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then Int else raise Error ("Type mismatch in assignment",p)
-            | (_, _)          => raise Error ("Type mismatch in assignment",p))
-    | S100.Call (f,es,p) => (* MISSING *)
+          (Ref(t), Ref _) => Int
+        | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
+                               Int
+                             else
+                               raise Error ("Type mismatch in assignment",p)
+    | S100.Call (f,es,p) => 
         (case lookup f ftable of
-	   NONE => raise Error ("Unknown function: "^f,p)
-	 | SOME (parT,resultT) =>
-	     let
-	       val argT = List.map (fn e => checkExp e vtable ftable) es
-	     in
-	       if parT = argT then resultT
-	       else raise Error ("Arguments don't match declaration of "^f, p)
-	     end)
+	      NONE => raise Error ("Unknown function: "^f,p)
+    	 | SOME (parT,resultT) =>
+             let
+               val argT = List.map (fn e => checkExp e vtable ftable) es
+             in
+	           if parT = argT then resultT
+	           else raise Error ("Arguments don't match declaration of "^f, p)
+	         end)
     | S100.Equal (e1,e2,p) =>
         (case (checkExp e1 vtable ftable, 
                checkExp e2 vtable ftable) of
-              (Ref(t), Ref _) => Int
-            | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then Int else raise Error ("Type mismatch in assignment",p)
-            | (_, _)          => raise Error ("Type mismatch in assignment",p))
+          (Ref(t), Ref _) => Int
+        | (t1, t2)        => if t2 <> Ref(Int) andalso t2 <> Ref(Char) then
+                               Int
+                             else
+                               raise Error ("Type mismatch in assignment",p)
 
   and checkLval lv vtable ftable =
     case lv of
       S100.Var (x,p) =>
         (case lookup x vtable of
-            SOME t => t
-	  | NONE   => raise Error ("Unknown variable: "^x,p))
+          SOME t => t
+	    | NONE   => raise Error ("Unknown variable: "^x,p))
      | S100.Deref (x,p) =>
         (case lookup x vtable of
           SOME (Ref(t))      => t
@@ -91,20 +99,20 @@ struct
          in
            if t1 <> Ref(Int) andalso t1 <> Ref(Char) then
               (case lookup x vtable of
-                   SOME (Ref(t)) => t
-                 | NONE          => raise Error ("Unknown reference: "^x,p))
+                SOME (Ref(t)) => t
+              | NONE          => raise Error ("Unknown reference: "^x,p))
            else raise Error ("Expression not of type Int",p)
          end
 
   fun extend [] _ vtable = vtable
     | extend (S100.Val (x,p)::sids) t vtable =
       (case lookup x vtable of
-            NONE   => extend sids t ((x,t)::vtable)
-          | SOME _ => raise Error ("Double declaration of "^x,p))
+        NONE   => extend sids t ((x,t)::vtable)
+      | SOME _ => raise Error ("Double declaration of "^x,p))
     | extend (S100.Ref (x,p)::sids) t vtable =
       (case lookup x vtable of
-            NONE   => extend sids t ((x,Ref(t))::vtable)
-          | SOME _ => raise Error ("Double declaration of "^x,p))
+        NONE   => extend sids t ((x,Ref(t))::vtable)
+      | SOME _ => raise Error ("Double declaration of "^x,p))
 
   fun checkDecs [] = []
     | checkDecs ((t,sids)::ds) =
@@ -122,8 +130,7 @@ struct
 	then (checkStat s1 vtable ftable;
 	      checkStat s2 vtable ftable)
 	else raise Error ("Condition should be integer",p)
-    | S100.Return (e,p) => (checkExp e vtable ftable; ()) (*Assume functioncheck
-    tests *)
+    | S100.Return (e,p) => (checkExp e vtable ftable; ())
     | S100.While (e,s,p) => 
         if checkExp e vtable ftable = Int
 	then checkStat s1 vtable ftable
@@ -156,7 +163,7 @@ struct
     in
       List.app (fn f => checkFunDec f ftable) fs;
       case lookup "main" ftable of
-	NONE => raise Error ("No main function found",(0,0))
+	    NONE => raise Error ("No main function found",(0,0))
       | SOME ([],Int) => ()
       | _ => raise Error ("main function has illegal type",(0,0))
     end
