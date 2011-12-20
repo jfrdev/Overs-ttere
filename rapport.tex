@@ -96,6 +96,58 @@ strukturen hvis indlejringen bliver for dyb.
 
 \section{Oversætter}
 
+\subsection{Generelt}
+Vi har tilføjet en konstant \textit{ZERO}, der repræsentere registeret 0. Dette
+er for symbolsk overskud i koden (kende forskel på imidiate og registre).
+
+
+\subsection{compileExp}
+bubber was here ->X<-
+
+\textit{StringConst} er en tegnreference, som først trækker længden af strengen
+plus et endeelement (nullbyte) fra stakpegeren og derpå bruger ASCIIZ til at
+lægge strengen på stakken (over stakpegeren).
+
+\textit{Assaign} patternmatcher på int, ref(int) og ref(char) i sidste instans,
+idet de alle skal håndteres ens. Resten håndteres enkeltvis, idet de
+henholdsvis er en tegnkonstant, der skal tjekkes på 8 bit, en tegnkonstant
+der tilgår stakken på 8 bit og en heltalsværdi der også tilgår
+stakken, men på 32 bit.
+
+\subsection{Behandling af tegnkonstanter}
+Vi har tilføjet en funktion \texttt{makeCharConst}, der omdanner en
+sml-tegnkonstant til en C-strengstegnkonstant der kan behandles af Mars
+(singlequotes bibeholdes i strengen).
+
+Da 100 tillader at addere tegnkonstant med tal og lade output være en
+tegnkonstant, kan man ``hacke'' sproget, idet man kan tilgå de tegn, som ellers
+ikke er tilladt (og bliver tjekket for i lexeren). Dette er ikke noget vi har
+valgt at behandle, idet programmøren selv må bære ansvaret, når han blander tal
+og tegnkonstanter. Det kan dog resultere i et program, der giver en
+uspecificerede opførsel.
+
+I compileExp, når en tegnkonstant evalueres, sørges for, at kun de første 8 ud
+af 32 bit bliver sat, ved at kalde MIPS-instruktionen andi på registeret med
+sig selv og konstanten 255. 
+
+\subsection{Lval}
+Vi tilføjede dereference og opslag, som begge tilgår stakken. Derfor valgte vi
+at udvide datatypen \textbf{Location} med en \textbf{Mem}. Dette gør, at når en
+dereference eller et opslag (beskrevet i \texttt{compileLval}) tilgår stakken 
+for at hente en værdi, i stedet for at gemme værdien i et midlertidigt
+register, bliver værdien gemt direkte i det tiltænkte register. Derved spares et
+register, for hvis vi brugte datatypen \textbf{Reg}, ville \texttt{compileLval}
+hente værdien fra stakken til et midlertidigt register, for at \texttt{lval}
+efterfølgende kan flytte værdien fra dette register til det tiltænkte register.
+
+Ved opslag bruges dog et midlertidigt register til at holde den nye adresse
+(inkl. offset) til stakken, som gives til \texttt{lval}, der gemmer værdien i
+det tiltænkte register.
+
+Når en tegnkonstant hentes, sørges samtidig for, i \texttt{lval}, at kun de
+første 8 ud af 32 bits i registeret sættes (til tegnkonstanten), hvor resten
+sættes til 0. Dette sikre at gamle data i registeret ikke er tilgængelige.
+
 \section{Konklusion}
 % overall hvad virker hvad gør ikke!
 \end{document}
