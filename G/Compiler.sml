@@ -17,6 +17,24 @@ struct
   fun makeConst n = if n>=0 then Int.toString n
                     else "-" ^ Int.toString (~n)
 
+  (* CHECK THIS FUNCTION CAN YOU USE ASCIIZ? *)
+  fun makeCharConst c = "'" ^ Char.toCString n ^ "'"
+
+(*  fun makeStringConst cs 0 place =
+        let
+          val length = List.length cs + 1
+        in
+          [Mips.ADDI(SP,SP, makeConst (~length))] @ makeStringConst cs 1 place
+        end
+    | makeStringConst [] n place =
+        [Mips.SB(ZERO, SP, n-1)] @
+        [Mips.ADDI(place, SP, "0")]
+    | makeStringConst c::cs n place =
+        [Mips.LI(place, makeCharConst c)] @
+        [Mips.SB(place, SP, makeConst n-1)]  @
+        makeStringConst cs n+1 place *)
+
+
   fun lookup x [] = NONE
     | lookup x ((y,v)::table) = if x=y then SOME v else lookup x table
 
@@ -31,12 +49,15 @@ struct
   val HP = "28"
   (* Register for frame pointer *)
   val FP = "25"
+  (* Register zero *)
+  val ZERO = "0"
 
   (* Suggested register division *)
   val maxCaller = 15   (* highest caller-saves register *)
   val maxReg = 24      (* highest allocatable register *)
 
   datatype Location = Reg of string (* value is in register *)
+                    | Mem of string (* value is in memory *)
 
   (* compile expression *)
   fun compileExp e vtable ftable place =
@@ -48,14 +69,26 @@ struct
 	  (Type.Int,
 	   [Mips.LUI (place, makeConst (n div 65536)),
 	   Mips.ORI (place, place, makeConst (n mod 65536))])
+    | S100.CharConst (c,pos) =>
+        (Type.Char, [Mips.LI (place, makeCharConst c),
+         Mips.ANDI (place, place, "255")])
+    | S100.StringConst (s,pos) =>
+        (Type.Ref(Char), [Mips.ADDI(SP, SP, makeConst(~((List.length n)+1)), 
+         Mips.ASCIIZ(s), Mips.MOVE(place, SP)])
     | S100.LV lval =>
         let
 	  val (code,ty,loc) = compileLval lval vtable ftable
 	in
 	  case (ty,loc) of
-	    (Type.Int, Reg x) =>
-	      (Type.Int,
-	       code @ [Mips.MOVE (place,x)])
+	    (Type.Int, Reg x)  =>
+	      (Type.Int, code @ [Mips.MOVE (place,x)])
+      | (Type.Char, Reg x) =>
+          (Type.Char, code @ [Mips.MOVE(place,x)])
+      | (Type.Int, Mem x)  =>
+          (Type.Int, code @ [Mips.LW(place,x,"0")])
+      | (Type.Char, Mem x) =>
+          (Type.Char, code @ [Mips.LB(place,x,"0")] @
+          [Mips.ANDI(place,place,"255")])
 	end
     | S100.Assign (lval,e,p) =>
         let
@@ -64,9 +97,16 @@ struct
 	  val (_,code1) = compileExp e vtable ftable t
 	in
 	  case (ty,loc) of
-	    (Type.Int, Reg x) =>
-	      (Type.Int,
-	       code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
+      | (Type.Char, Reg x)      =>
+          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
+            Mips.MOVE(place,t)])
+      | (Type.Int, Mem x)       =>
+          (Type.Int, code0 @ code1 @ [Mips.SW(x,t), Mips.MOVE(place,t)])
+      | (Type.Char, Mem x)      =>
+          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(x,t),
+           Mips.MOVE(place,t)]) 
+      | (ty, Reg x) =>
+	      (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
 	end
     | S100.Plus (e1,e2,pos) =>
         let
@@ -76,9 +116,18 @@ struct
           val (ty2,code2) = compileExp e2 vtable ftable t2
 	in
 	  case (ty1,ty2) of
-	    (Type.Int, Type.Int) =>
-	      (Type.Int,
-	       code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+        (Type.Ref(Int), _)  =>
+          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"), 
+           Mips.ADD (place,t1,t2)])
+      | (_, Type.Ref(Int))  =>
+          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t1,t1,"2"), 
+           Mips.ADD (place,t1,t2)])
+      | (Type.Ref(Char), _) =>
+          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+      | (_, Type.Ref(Char)) =>
+          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+      | (_, _)              =>
+          (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)])
 	end
     | S100.Minus (e1,e2,pos) =>
         let
@@ -88,9 +137,13 @@ struct
           val (ty2,code2) = compileExp e2 vtable ftable t2
 	in
 	  case (ty1,ty2) of
-	    (Type.Int, Type.Int) =>
-	      (Type.Int,
-	       code1 @ code2 @ [Mips.SUB (place,t1,t2)])
+        (Type.Ref(Int), _)  =>
+          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"),
+           Mips.SUB (place,t1,t2)])
+      | (Type.Ref(Char), _) =>
+          (Type.Ref(Char), code1 @ code2 @ [Mips.SUB (place,t1,t2)])
+      | (_, _)              =>
+          (Type.Int, code1 @ code2 @ [Mips.SUB (place,t1,t2)])
 	end
     | S100.Less (e1,e2,pos) =>
         let
@@ -101,6 +154,17 @@ struct
 	in
 	  (Type.Int, code1 @ code2 @ [Mips.SLT (place,t1,t2)])
 	end
+    | S100.Equal (e1,e2,pos) =>
+        let
+      val t1 = "_equal1_"^newName()
+      val t2 = "_equal2_"^newName()
+      val l1 = "_equlabel_"^newName()
+          val (_,code1) = compileExp e1 vtable ftable t1
+          val (_,code2) = compileExp e2 vtable ftable t2
+	in
+      (Type.Int, code1 @ code2 @ [Mips.LI(place, "0"), MIPS.BNE(t1,t2,l1),
+       Mips.ADDI(place, ZERO, "1"), Mips.LABEL l1])
+    end
     | S100.Call (f,es,pos) =>
 	let
 	  val rTy = case lookup f ftable of
@@ -151,8 +215,21 @@ struct
     case lval of
       S100.Var (x,p) =>
         (case lookup x vtable of
-	   SOME (ty,y) => ([],ty,Reg y)
-	 | NONE => raise Error ("Unknown variable "^x,p))
+	       SOME (ty,y) => ([],ty,Reg y)
+	     | NONE => raise Error ("Unknown variable "^x,p))
+    | S100.Deref (x,p) =>
+        (case lookup x vtable of
+           SOME (ty,y) => ([],ty,Mem y)
+         | NONE => raise Error ("Unknown reference "^x,p))
+    | S100.Lookup (x,e,p) =>
+        let
+          val y1 = "_lookup_"^newName()
+          val (_, code) = compileExp e vtable ftable y1
+        in
+          (case lookup x vtable of
+            SOME (ty,y) => (code @ [Mips.ADD(y1,y1,y)], ty, Mem y1)
+          | NONE => raise Error ("Unknown reference "^x,p))
+        end
 
   fun compileStat s vtable ftable exitLabel =
     case s of
@@ -261,11 +338,11 @@ struct
     let
       val ftable =
 	  Type.getFuns funs [("getint",([],Type.Int)),
-                             ("walloc",([Type.Int],Type.Ref(Type.Int))),
-                             ("balloc",([Type.Int],Type.Ref(Type.Char))),
-                             ("getstring",([Type.Int],Type.Ref(Type.Char))),
-			     ("putint",([Type.Int],Type.Int)),
-                             ("putstring",([Type.Ref(Type.Char)],Type.Ref(Type.Char)))]
+                         ("walloc",([Type.Int],Type.Ref(Type.Int))),
+                         ("balloc",([Type.Int],Type.Ref(Type.Char))),
+                         ("getstring",([Type.Int],Type.Ref(Type.Char))),
+			             ("putint",([Type.Int],Type.Int)),
+                         ("putstring",([Type.Ref(Type.Char)],Type.Ref(Type.Char)))]
 
       val funsCode = List.concat (List.map (compileFun ftable) funs)
     in

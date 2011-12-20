@@ -4,14 +4,18 @@ us to have done every week. Furthermore our current process is also tracked.
 
 
 ## Pending tasks/issues
-* Write the report D:...
-* Implement the compiler o.0... the big one D:
-* Make pre-existing functions
+* Write the report
+* Implement the compiler
+    * While-loop (compileStat)
+    * Blocks (compileStat)
+    * Ref (compileFun)
+    * Predefined functions (bottom of compiler)
+* Test of compiler and basically everything!
 
 ## Implemented
 * The lexer
 * The parser
-* The type checker (maybeh moar test?)
+* The type checker
 
 ## Expected Milestones
 ### Uge 47
