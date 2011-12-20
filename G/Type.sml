@@ -58,7 +58,7 @@ struct
           (Ref(t1), Ref(t2)) => if t1=t2
                                 then Int
                                 else raise Error ("Type mismatch in less-than comparison",p)
-        | (t1, t2)           => if t2 <> Ref(Int) andalso t2 <> Ref(Char)
+        | (t1, t2)           => if (t1=Char orelse t1=Int) andalso (t2=Char orelse t2=Int) 
                                 then Int
                                 else raise Error ("Type mismatch in less-than comparison",p))
     | S100.Call (f,es,p) => 
@@ -79,7 +79,7 @@ struct
                                 then Int
                                 else raise Error ("Type mismatch in equal comparison",p)
 
-        | (t1, t2)           => if t2 <> Ref(Int) andalso t2 <> Ref(Char)
+        | (t1, t2)           => if (t1=Char orelse t1=Int) andalso (t2=Char orelse t2=Int) 
                                 then Int
                                 else raise Error ("Type mismatch in equal comparison",p))
 
