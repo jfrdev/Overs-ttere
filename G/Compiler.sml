@@ -24,7 +24,7 @@ struct
     | isIn x (y::ys) = x=y orelse isIn x ys
 
   (* CHECK THIS FUNCTION CAN YOU USE ASCIIZ? *)
-  fun makeCharConst c = "'" ^ Char.toCString n ^ "'"
+  fun makeCharConst c = "'" ^ Char.toCString c ^ "'"
 
 (*  fun makeStringConst cs 0 place =
         let
@@ -72,7 +72,7 @@ struct
         (Type.Char, [Mips.LI (place, makeCharConst c),
          Mips.ANDI (place, place, "255")])
     | S100.StringConst (s,pos) =>
-        (Type.Ref(Char), [Mips.ADDI(SP, SP, makeConst(~((List.length n)+1))), 
+        (Type.Ref(Type.Char), [Mips.ADDI(SP, SP, makeConst(~(String.size(s)+1))),
          Mips.ASCIIZ(s), Mips.MOVE(place, SP)])
     | S100.LV lval =>
         let
@@ -88,6 +88,7 @@ struct
       | (Type.Char, Mem x) =>
           (Type.Char, code @ [Mips.LB(place,x,"0")] @
           [Mips.ANDI(place,place,"255")])
+      | ( _, _) => raise Error ("Typechecker failed me:'(",(0,0)) (* TODO: FIXME: Make better!!! *)
 	end
     | S100.Assign (lval,e,p) =>
         let
@@ -96,16 +97,17 @@ struct
 	  val (_,code1) = compileExp e vtable ftable t
 	in
 	  case (ty,loc) of
-      | (Type.Char, Reg x)      =>
-          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
-            Mips.MOVE(place,t)])
-      | (Type.Int, Mem x)       =>
-          (Type.Int, code0 @ code1 @ [Mips.SW(x,t), Mips.MOVE(place,t)])
-      | (Type.Char, Mem x)      =>
-          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(x,t),
-           Mips.MOVE(place,t)]) 
-      | (ty, Reg x) =>
-	      (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
+            (Type.Char, Reg x)      =>
+            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
+                                         Mips.MOVE(place,t)])
+          | (Type.Int, Mem x)       =>
+            (Type.Int, code0 @ code1 @ [Mips.SW(x,t,"0"), Mips.MOVE(place,t)])
+          | (Type.Char, Mem x)      =>
+            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(x,t,"0"),
+                                         Mips.MOVE(place,t)]) 
+          | (ty, Reg x) =>
+	    (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
+          | ( _, _) => raise Error ("Typechecker failed me :'(",p)  (* TODO: FIXME: Make better!!! *)
 	end
     | S100.Plus (e1,e2,pos) =>
         let
@@ -115,16 +117,16 @@ struct
           val (ty2,code2) = compileExp e2 vtable ftable t2
 	in
 	  case (ty1,ty2) of
-        (Type.Ref(Int), _)  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"), 
+        (Type.Ref(Type.Int), _)  =>
+          (Type.Ref(Type.Int), code1 @ code2 @ [Mips.SLL (t2,t2,"2"), 
            Mips.ADD (place,t1,t2)])
-      | (_, Type.Ref(Int))  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t1,t1,"2"), 
+      | (_, Type.Ref(Type.Int))  =>
+          (Type.Ref(Type.Int), code1 @ code2 @ [Mips.SLL (t1,t1,"2"), 
            Mips.ADD (place,t1,t2)])
-      | (Type.Ref(Char), _) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
-      | (_, Type.Ref(Char)) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+      | (Type.Ref(Type.Char), _) =>
+          (Type.Ref(Type.Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+      | (_, Type.Ref(Type.Char)) =>
+          (Type.Ref(Type.Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
       | (_, _)              =>
           (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)])
 	end
@@ -136,11 +138,11 @@ struct
           val (ty2,code2) = compileExp e2 vtable ftable t2
 	in
 	  case (ty1,ty2) of
-        (Type.Ref(Int), _)  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"),
+        (Type.Ref(Type.Int), _)  =>
+          (Type.Ref(Type.Int), code1 @ code2 @ [Mips.SLL (t2,t2,"2"),
            Mips.SUB (place,t1,t2)])
-      | (Type.Ref(Char), _) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.SUB (place,t1,t2)])
+      | (Type.Ref(Type.Char), _) =>
+          (Type.Ref(Type.Char), code1 @ code2 @ [Mips.SUB (place,t1,t2)])
       | (_, _)              =>
           (Type.Int, code1 @ code2 @ [Mips.SUB (place,t1,t2)])
 	end
@@ -161,44 +163,44 @@ struct
           val (_,code1) = compileExp e1 vtable ftable t1
           val (_,code2) = compileExp e2 vtable ftable t2
 	in
-      (Type.Int, code1 @ code2 @ [Mips.LI(place, "0"), MIPS.BNE(t1,t2,l1),
+      (Type.Int, code1 @ code2 @ [Mips.LI(place, "0"), Mips.BNE(t1,t2,l1),
        Mips.ADDI(place, ZERO, "1"), Mips.LABEL l1])
     end
     | S100.Call (f,es,pos) =>
-	let
-	  val rTy = case lookup f ftable of
-		      SOME (_,t) => t
-		    | NONE => raise Error ("unknown function "^f,pos)
-	  val (code1,args) = compileExps es vtable ftable
-	  fun moveArgs [] r = ([],[],0)
-	    | moveArgs (arg::args) r =
-	        let
-		  val (code,parRegs,stackSpace) = moveArgs args (r+1)
-		  val rname = makeConst r
-		in
-	          if r<=maxCaller then
-		    (Mips.MOVE (rname,arg) :: code,
-		     rname :: parRegs,
-		     stackSpace)
-		  else
-		    (Mips.SW (arg,SP,makeConst stackSpace) :: code,
-		     parRegs,
-		     stackSpace + 4)
-		end
-	  val (moveCode, parRegs, stackSpace) = moveArgs args 2
-	in
-	  (rTy,
-	   if stackSpace>0 then
-	     [Mips.ADDI (SP,SP,makeConst (~stackSpace))]
-	     @ code1 @ moveCode @
-	     [Mips.JAL (f, parRegs),
-	      Mips.MOVE (place,"2"),
-	      Mips.ADDI (SP,SP,makeConst stackSpace)]
-	   else
-	     code1 @ moveCode @
-	     [Mips.JAL (f, parRegs),
-	      Mips.MOVE (place,"2")])
-	end
+      let
+        val rTy = case lookup f ftable of
+                    SOME (_,t) => t
+                  | NONE => raise Error ("unknown function "^f,pos)
+        val (code1,args) = compileExps es vtable ftable
+        fun moveArgs [] r = ([],[],0)
+          | moveArgs (arg::args) r =
+            let
+              val (code,parRegs,stackSpace) = moveArgs args (r+1)
+              val rname = makeConst r
+            in
+              if r<=maxCaller then
+                (Mips.MOVE (rname,arg) :: code,
+                 rname :: parRegs,
+                 stackSpace)
+              else
+                (Mips.SW (arg,SP,makeConst stackSpace) :: code,
+                 parRegs,
+                 stackSpace + 4)
+            end
+        val (moveCode, parRegs, stackSpace) = moveArgs args 2
+      in
+        (rTy,
+         if stackSpace>0 then
+           [Mips.ADDI (SP,SP,makeConst (~stackSpace))]
+           @ code1 @ moveCode @
+           [Mips.JAL (f, parRegs),
+            Mips.MOVE (place,"2"),
+            Mips.ADDI (SP,SP,makeConst stackSpace)]
+         else
+           code1 @ moveCode @
+           [Mips.JAL (f, parRegs),
+            Mips.MOVE (place,"2")])
+      end
 
   and compileExps [] vtable ftable = ([], [])
     | compileExps (e::es) vtable ftable =
@@ -232,33 +234,34 @@ struct
 
   (* Makes vtable *)
   fun makeVtable ss =
-    let
-      fun moveArgs [] r = ([], [], 0)
-        | moveArgs ((t,ss)::ds) r =
+      let
+        fun moveArgs [] r = ([], [], 0)
+          | moveArgs ((t,ss)::ds) r =
             moveArgs1 ss (Type.convertType t) ds r
-      and moveArgs1 [] t ds r = moveArgs ds r
-        | moveArgs1 (s::ss) t ds r =
-           let
-             val y = newName ()
-             val (x,ty,loc) = (case s of 
-                                    S100.Val (x,p) => (x, t, x^y))
-             val rname = Int.toString r
-             val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
-           in
-             if r<=maxCaller then
-               (Mips.MOVE (loc, rname) :: code,
-                (x,(ty,loc)) :: vtable,
-                stackSpace)
-             else
-               (Mips.LW (loc, FP, makeConst stackSpace) :: code,
-                (x,(ty,loc)) :: vtable,
-                stackSpace + 4)
-           end
-       val (parcode,vtable,_) = moveArgs ss 2
-    in
-      (parcode, vtable)
-    end
-
+        and moveArgs1 [] t ds r = moveArgs ds r
+          | moveArgs1 (s::ss) t ds r =
+            let
+              val y = newName ()
+              val (x,ty,loc) = (case s of 
+                                  S100.Val (x,p) => (x, t, x^y)
+                                | S100.Ref (x,p) => (x, t, x^y))
+              val rname = Int.toString r
+              val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
+            in
+              if r<=maxCaller then
+                (Mips.MOVE (loc, rname) :: code,
+                 (x,(ty,loc)) :: vtable,
+                 stackSpace)
+              else
+                (Mips.LW (loc, FP, makeConst stackSpace) :: code,
+                 (x,(ty,loc)) :: vtable,
+                 stackSpace + 4)
+            end
+        val (_,vtable,_) = moveArgs ss 2
+      in
+        vtable
+      end
+      
   fun compileStat s vtable ftable exitLabel =
     case s of
       S100.EX e => #2 (compileExp e vtable ftable "0")
@@ -289,10 +292,9 @@ struct
           val l1         = "_while1_"^newName()
           val l2         = "_while2_"^newName()
           val (_,code0)  = compileExp e vtable ftable t
-          code0 = code0 @ [Mips.BEQ(t,"1", l1)]
           val code1      = compileStat s1 vtable ftable exitLabel
         in
-          code0 @ [Mips.J l2, Mips.LABEL l1] @ code1 @ code0 @ [Mips.LABEL l2]
+          [Mips.J l1, Mips.LABEL l2] @ code1 @ [Mips.LABEL l1] @ code0 @ [Mips.BEQ(t, "1", l2)]
         end
     | S100.Return (e,p) =>
         let
@@ -303,22 +305,21 @@ struct
     	end
     | S100.Block (ds,ss,p) =>
         let
-          val bname = "_exit_"^newName()
+          val l1      = "_endblock_"^newName()
           val vtable' = (makeVtable ds) @ vtable
-          val code0 = compileStats ss vtable' ftable bname
+          val code0   = compileStats ss vtable' ftable l1
         in
           code0
         end
 
-  and compileStats [] vtable ftable exitlabel = ([], [])
+  and compileStats [] vtable ftable exitLabel = []
     | compileStats (s::ss) vtable ftable exitLabel =
-        let
-	      val t1 = "_stats_"^newName()
-          val (_,code1) = compileStat s vtable ftable exitlabel
-	      val (code2, regs) = compileStats ss vtable ftable exitlabel
-    	in
-    	  (code1 @ code2, t1 :: regs)
-	    end
+      let
+        val code1 = compileStat s vtable ftable exitLabel
+	val code2  = compileStats ss vtable ftable exitLabel
+      in
+    	code1 @ code2
+      end
 
  
 
@@ -352,7 +353,8 @@ struct
                let
                  val y = newName ()
                  val (x,ty,loc) = (case s of
-                         S100.Val (x,p) => (x, t, x^y))
+                         S100.Val (x,p) => (x, t, x^y)
+                       | S100.Ref (x,p) => (x, t, x^y))
                  val rname = Int.toString r
                  val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
                in
@@ -434,15 +436,33 @@ struct
 	 Mips.JR (RA,[]),
 
          Mips.LABEL "putstring",  (* putstring function *)
-         Mips.LI ("2","4"),       (* print_string syscall *)
-         Mips.SYSCALL,            (* da argumentet allerede er i 4,
-                                   * skal intet flyttes *)
+         Mips.LI("2","4"),        (* Prepare putstring syscall *)
+         Mips.SYSCALL,            (* do syscall *)
+         Mips.LA("4","_cr_"),
+	 Mips.SYSCALL,            (* write CR *)
          Mips.JR (RA,[]),
 
-         (* putstring tager adresse fra $4 og læser
-          * en streng fra adressen og printer den i
-          * output.
-          *)
+         Mips.LABEL "walloc",     (* Word aligned allocation*)
+         Mips.SLL ("4", "4", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
+         Mips.SUB (SP , SP , "4"),(* træk det fra SP *)
+         Mips.MOVE("2", SP ),     (* flyt det til retur registret *)
+         Mips.JR (RA, []),
+
+         Mips.LABEL "balloc",     (* Byte allocation *)
+         Mips.SUB (SP , SP , "4"),(* træk argumentet fra SP *)
+         Mips.MOVE("2", SP ),     (* flyt SP til retur *)
+         Mips.JR (RA, []),
+
+         Mips.LABEL "getstring",  (* getstring *)
+         Mips.SUB (SP,SP,"4"),    (* reserve space for string on stack *)
+         Mips.MOVE ("5","4"),     (* move argument to correct register *)
+         Mips.MOVE ("4",SP),      (* put start of buffer in argument *)
+         Mips.LI ("2","8"),       (* prepare syscall *)
+         Mips.SYSCALL,            (* make syscall *)
+         Mips.MOVE("2",SP),        (* put pointer in return register *)
+         Mips.JR (RA, []),
+
+
          (* MIPS NOTER:
           * Mips.LI (rd, v)
           * rd <- OR 0x00 V
