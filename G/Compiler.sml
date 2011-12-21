@@ -34,7 +34,7 @@ struct
         [Mips.SB(place, SP, makeConst n-1)]  @
         makeStringConst cs n+1 place *)
 
-register *)
+  (*  Link  register *)
   val RA = "31"
   (* Register for stack pointer *)
   val SP = "29"
@@ -223,6 +223,35 @@ register *)
             SOME (ty,y) => (code @ [Mips.ADD(y1,y1,y)], ty, Mem y1)
           | NONE => raise Error ("Unknown reference "^x,p))
         end
+
+  (* Makes vtable *)
+  fun makeVtable ss =
+    let
+      fun moveArgs [] r = ([], [], 0)
+        | moveArgs ((t,ss)::ds) r =
+            moveArgs1 ss (Type.convertType t) ds r
+      and moveArgs1 [] t ds r = moveArgs ds r
+        | moveArgs1 (s::ss) t ds r =
+           let
+             val y = newName ()
+             val (x,ty,loc) = (case s of 
+                                    S100.Val (x,p) => (x, t, x^y))
+             val rname = Int.toString r
+             val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
+           in
+             if r<=maxCaller then
+               (Mips.MOVE (loc, rname) :: code,
+                (x,(ty,loc)) :: vtable,
+                stackSpace)
+             else
+               (Mips.LW (loc, FP, makeConst stackSpace) :: code,
+                (x,(ty,loc)) :: vtable,
+                stackSpace + 4)
+           end
+       val (parcode,vtable,_) = moveArgs ss 2
+    in
+      (parcode, vtable)
+    end
 
   fun compileStat s vtable ftable exitLabel =
     case s of
@@ -268,310 +297,23 @@ register *)
     	end
     | S100.Block (ds,ss,p) =>
         let
-          val vtable' = vtable 
-          val ftable' = ftable
-          val code0   =  
-        in
-          
-        end
- 
-
-  (* code for saving and restoring callee-saves registers *)
-  fun stackSave currentReg maxReg savecode restorecode offset =
-    if currentReg > maxReg
-    then (savecode, restorecode, offset)  (* done *)
-    else stackSave (currentReg+1)
-                   maxReg
-                   (Mips.SW (makeConst currentReg,
-                                 SP,
-                                 makeConst offset)
-                    :: savecode) (* save register *)
-                   (Mips.LW (makeConst currentReg,
-                                 SP,
-                                 makeConst offset)
-                    :: restorecode) (* restore register *)
-                   (offset+4) (* adjust offset *)
-
-
-  (* Makes vtable *)
-  fun makeVtable ss =
-    let
-      fun moveArgs [] r = ([], [], 0)
-        | moveArgs ((t,ss)::ds) r =
-            moveArgs1 ss (Type.convertType t) ds r
-      and moveArgs1 [] t ds r = moveArgs ds r
-        | moveArgs1 (s::ss) t ds r =
-           let
-             val y = newName ()
-             val (x,ty,loc) = (case s of 
-                                    S100.Val (x,p) => (x, t, x^y))
-             val rname = Int.toString r
-             val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
-           in
-             if r<=maxCaller then
-               (Mips.MOVE (loc, rname) :: code,
-                (x,(ty,loc)) :: vtable,
-                stackSpace)
-             else
-               (Mips.LW (loc, FP, makeConst stackSpace) :: code,
-                (x,(ty,loc)) :: vtable,
-                stackSpace + 4)
-           end
-       val (parcode,vtable,_) = moveArgs ss 2
-    in
-      (parcode, vtable)
-    end
-
-
-
-  fun lookup x [] = NONE
-    | lookup x ((y,v)::table) = if x=y then SOME v else lookup x table
-
-  fun isIn x [] = false
-    | isIn x (y::ys) = x=y orelse isIn x ys
-
-  (* link register *)
-  val RA = "31"
-  (* Register for stack pointer *)
-  val SP = "29"
-  (* Register for heap pointer *)
-  val HP = "28"
-  (* Register for frame pointer *)
-  val FP = "25"
-  (* Register zero *)
-  val ZERO = "0"
-
-  (* Suggested register division *)
-  val maxCaller = 15   (* highest caller-saves register *)
-  val maxReg = 24      (* highest allocatable register *)
-
-  datatype Location = Reg of string (* value is in register *)
-                    | Mem of string (* value is in memory *)
-
-  (* compile expression *)
-  fun compileExp e vtable ftable place =
-    case e of
-      S100.NumConst (n,pos) =>
-        if n<32768 then
-	  (Type.Int,[Mips.LI (place, makeConst n)])
-	else
-	  (Type.Int,
-	   [Mips.LUI (place, makeConst (n div 65536)),
-	   Mips.ORI (place, place, makeConst (n mod 65536))])
-    | S100.CharConst (c,pos) =>
-        (Type.Char, [Mips.LI (place, makeCharConst c),
-         Mips.ANDI (place, place, "255")])
-    | S100.StringConst (s,pos) =>
-        (Type.Ref(Char), [Mips.ADDI(SP, SP, makeConst(~((List.length n)+1))), 
-         Mips.ASCIIZ(s), Mips.MOVE(place, SP)])
-    | S100.LV lval =>
-        let
-	  val (code,ty,loc) = compileLval lval vtable ftable
-	in
-	  case (ty,loc) of
-	    (Type.Int, Reg x)  =>
-	      (Type.Int, code @ [Mips.MOVE (place,x)])
-      | (Type.Char, Reg x) =>
-          (Type.Char, code @ [Mips.MOVE(place,x)])
-      | (Type.Int, Mem x)  =>
-          (Type.Int, code @ [Mips.LW(place,x,"0")])
-      | (Type.Char, Mem x) =>
-          (Type.Char, code @ [Mips.LB(place,x,"0")] @
-          [Mips.ANDI(place,place,"255")])
-	end
-    | S100.Assign (lval,e,p) =>
-        let
-          val t = "_assign_"^newName()
-	  val (code0,ty,loc) = compileLval lval vtable ftable
-	  val (_,code1) = compileExp e vtable ftable t
-	in
-	  case (ty,loc) of
-      | (Type.Char, Reg x)      =>
-          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
-            Mips.MOVE(place,t)])
-      | (Type.Int, Mem x)       =>
-          (Type.Int, code0 @ code1 @ [Mips.SW(x,t), Mips.MOVE(place,t)])
-      | (Type.Char, Mem x)      =>
-          (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(x,t),
-           Mips.MOVE(place,t)]) 
-      | (ty, Reg x) =>
-	      (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
-	end
-    | S100.Plus (e1,e2,pos) =>
-        let
-	  val t1 = "_plus1_"^newName()
-	  val t2 = "_plus2_"^newName()
-          val (ty1,code1) = compileExp e1 vtable ftable t1
-          val (ty2,code2) = compileExp e2 vtable ftable t2
-	in
-	  case (ty1,ty2) of
-        (Type.Ref(Int), _)  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"), 
-           Mips.ADD (place,t1,t2)])
-      | (_, Type.Ref(Int))  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t1,t1,"2"), 
-           Mips.ADD (place,t1,t2)])
-      | (Type.Ref(Char), _) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
-      | (_, Type.Ref(Char)) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
-      | (_, _)              =>
-          (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)])
-	end
-    | S100.Minus (e1,e2,pos) =>
-        let
-	  val t1 = "_minus1_"^newName()
-	  val t2 = "_minus2_"^newName()
-          val (ty1,code1) = compileExp e1 vtable ftable t1
-          val (ty2,code2) = compileExp e2 vtable ftable t2
-	in
-	  case (ty1,ty2) of
-        (Type.Ref(Int), _)  =>
-          (Type.Ref(Int), code1 @ code2 @ [MIPS.SLL (t2,t2,"2"),
-           Mips.SUB (place,t1,t2)])
-      | (Type.Ref(Char), _) =>
-          (Type.Ref(Char), code1 @ code2 @ [Mips.SUB (place,t1,t2)])
-      | (_, _)              =>
-          (Type.Int, code1 @ code2 @ [Mips.SUB (place,t1,t2)])
-	end
-    | S100.Less (e1,e2,pos) =>
-        let
-	  val t1 = "_less1_"^newName()
-	  val t2 = "_less2_"^newName()
-          val (_,code1) = compileExp e1 vtable ftable t1
-          val (_,code2) = compileExp e2 vtable ftable t2
-	in
-	  (Type.Int, code1 @ code2 @ [Mips.SLT (place,t1,t2)])
-	end
-    | S100.Equal (e1,e2,pos) =>
-        let
-      val t1 = "_equal1_"^newName()
-      val t2 = "_equal2_"^newName()
-      val l1 = "_equlabel_"^newName()
-          val (_,code1) = compileExp e1 vtable ftable t1
-          val (_,code2) = compileExp e2 vtable ftable t2
-	in
-      (Type.Int, code1 @ code2 @ [Mips.LI(place, "0"), MIPS.BNE(t1,t2,l1),
-       Mips.ADDI(place, ZERO, "1"), Mips.LABEL l1])
-    end
-    | S100.Call (f,es,pos) =>
-	let
-	  val rTy = case lookup f ftable of
-		      SOME (_,t) => t
-		    | NONE => raise Error ("unknown function "^f,pos)
-	  val (code1,args) = compileExps es vtable ftable
-	  fun moveArgs [] r = ([],[],0)
-	    | moveArgs (arg::args) r =
-	        let
-		  val (code,parRegs,stackSpace) = moveArgs args (r+1)
-		  val rname = makeConst r
-		in
-	          if r<=maxCaller then
-		    (Mips.MOVE (rname,arg) :: code,
-		     rname :: parRegs,
-		     stackSpace)
-		  else
-		    (Mips.SW (arg,SP,makeConst stackSpace) :: code,
-		     parRegs,
-		     stackSpace + 4)
-		end
-	  val (moveCode, parRegs, stackSpace) = moveArgs args 2
-	in
-	  (rTy,
-	   if stackSpace>0 then
-	     [Mips.ADDI (SP,SP,makeConst (~stackSpace))]
-	     @ code1 @ moveCode @
-	     [Mips.JAL (f, parRegs),
-	      Mips.MOVE (place,"2"),
-	      Mips.ADDI (SP,SP,makeConst stackSpace)]
-	   else
-	     code1 @ moveCode @
-	     [Mips.JAL (f, parRegs),
-	      Mips.MOVE (place,"2")])
-	end
-
-  and compileExps [] vtable ftable = ([], [])
-    | compileExps (e::es) vtable ftable =
-        let
-	  val t1 = "_exps_"^newName()
-          val (_,code1) = compileExp e vtable ftable t1
-	  val (code2, regs) = compileExps es vtable ftable
-	in
-	  (code1 @ code2, t1 :: regs)
-	end
-
-  and compileLval lval vtable ftable =
-    case lval of
-      S100.Var (x,p) =>
-        (case lookup x vtable of
-	       SOME (ty,y) => ([],ty,Reg y)
-	     | NONE => raise Error ("Unknown variable "^x,p))
-    | S100.Deref (x,p) =>
-        (case lookup x vtable of
-           SOME (ty,y) => ([],ty,Mem y)
-         | NONE => raise Error ("Unknown reference "^x,p))
-    | S100.Lookup (x,e,p) =>
-        let
-          val y1 = "_lookup_"^newName()
-          val (_, code) = compileExp e vtable ftable y1
-        in
-          (case lookup x vtable of
-            SOME (ty,y) => (code @ [Mips.ADD(y1,y1,y)], ty, Mem y1)
-          | NONE => raise Error ("Unknown reference "^x,p))
-        end
-
-  fun compileStat s vtable ftable exitLabel =
-    case s of
-      S100.EX e => #2 (compileExp e vtable ftable "0")
-    | S100.If (e,s1,p) =>
-        let
-	      val t = "_if_"^newName()
-	      val l1 = "_endif_"^newName()
-	      val (_,code0) = compileExp e vtable ftable t
-	      val code1 = compileStat s1 vtable ftable exitLabel
-    	in
-	     code0 @ [Mips.BEQ (t,"0",l1)] @ code1 @ [Mips.LABEL l1]
-	    end
-    | S100.IfElse (e,s1,s2,p) =>
-        let
-	      val t = "_if_"^newName()
-	      val l1 = "_else_"^newName()
-	      val l2 = "_endif_"^newName()
-	      val (_,code0) = compileExp e vtable ftable t
-	      val code1 = compileStat s1 vtable ftable exitLabel
-	      val code2 = compileStat s2 vtable ftable exitLabel
-      	in
-	      code0 @ [Mips.BEQ (t,"0",l1)] @ code1
-	      @ [Mips.J l2, Mips.LABEL l1] @ code2 @ [Mips.LABEL l2]
-	    end
-    | S100.While (e,s1,p) =>
-        let
-          val t          = "_cond_"^newName()
-          val l1         = "_while1_"^newName()
-          val l2         = "_while2_"^newName()
-          val (_,code0)  = compileExp e vtable ftable t @ [Mips.BEQ(t,"1", l1)]
-          val code1      = compileStat s1 vtable ftable exitLabel
-        in
-          code0 @ [Mips.J l2, Mips.LABEL l1] @ code1 @ code0 @ [Mips.LABEL l2]
-        end
-    | S100.Return (e,p) =>
-        let
-	      val t = "_return_"^newName()
-	      val (_,code0) = compileExp e vtable ftable t
-	    in
-	     code0 @ [Mips.MOVE ("2",t), Mips.J exitLabel]
-    	end
-    | S100.Block (ds,ss,p) =>
-        let
-          val bname = Type.getName sf          
-          val (parcode, temptable) = (makeVtable ds) 
-          val vtable' = temptable @ vtable
-          val body = compileStat ss vtable' ftable (bname ^ "_exit")
-          val code0 =  (* call register allocator *)
-                RegAlloc.registerAlloc (parcode @ body) [] 2 maxCaller maxReg 0
+          val bname = "_exit_"^newName()
+          val vtable' = (makeVtable ds) @ vtable
+          val code0 = compileStats ss vtable' ftable bname
         in
           code0
         end
+
+  and compileStats [] vtable ftable exitLabel = ([], [])
+    | compileStats (s::ss) vtable ftable exitLabel =
+        let
+	      val t1 = "_stats_"^newName()
+          val (_,code1) = compileStat s vtable ftable exitLabel
+	      val (code2, regs) = compileStats ss vtable ftable exitLabel
+    	in
+    	  (code1 @ code2, t1 :: regs)
+	    end
+
  
 
   (* code for saving and restoring callee-saves registers *)
