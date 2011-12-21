@@ -85,6 +85,8 @@ der. Dette viste sig dog at hænge sammen med, at SeeSyntax ikke kan vise
 strukturen hvis indlejringen bliver for dyb.
 
 \section{Typechecker}
+
+
 % Hvad har vi implementeret?
 % Hvordan er typer lavet
 % hvad har vi ændret markant, og hvilke funktioner har vi tilføjet
@@ -105,6 +107,15 @@ er for symbolsk overskud i koden (kende forskel på imidiate og registre).
 
 
 \subsection{While-løkke}
+Opbygningen af whileløkken er inspireret af opgave 1.C fra ugeopgave 4. Hvor vi 
+Vi bruger først \texttt{compileExp} til at oversætte udtrykket som er 
+betingelsen i løkken. Efter den kode det producere appender vi så en 
+\texttt{BEQ} Som hopper til $l1$ hvis betingelsen evaluerede til true. Efter 
+dette appendes et \texttt{Jump} til $l2$ så appendes \texttt{LABEL} $l1$ så 
+appendes den kode der er kroppen i while-løkken, og så evalueringen (med 
+\texttt{BEQ} igen, og derefter \texttt{LABEL} $l2$.
+
+
 
 \subsection{Block}
 Funktionen \texttt{makeVtable} laver og returnere et nyt vtable'. Blokken
@@ -120,6 +131,8 @@ vtable og derfor tilgås de samme registre.
 Når blokken slutter, bliver vtable' ikke brugt mere (i og med det ikke er givet
 videre til nogen efterfølgende erklæringer), og vil derfor automatisk blive
 fjernet af spildopsamleren.
+
+vtable' bliver lavet ud fra principperne fra \texttt{compileFun}, der laver vtable. Vi har derfor genbrugt og lettere modificeret en del kodestykker fra denne.
 
 \textit{StringConst} er en tegnreference, som først trækker længden af strengen
 plus et endeelement (nullbyte) fra stakpegeren og derpå bruger ASCIIZ til at
