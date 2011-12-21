@@ -6,7 +6,6 @@ us to have done every week. Furthermore our current process is also tracked.
 ## Pending tasks/issues
 * Write the report
 * Implement the compiler
-    * While-loop (compileStat)
     * Blocks (compileStat)
     * Ref (compileFun)
     * Predefined functions (bottom of compiler)
