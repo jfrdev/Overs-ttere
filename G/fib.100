@@ -1,7 +1,7 @@
 /* fib.100 -- fibonacci's function */
 
 int main()
-  { return 3; }
+  return putint(fib(getint()));
 
 int fib(int n)
   if (n<2) return n;
