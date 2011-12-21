@@ -17,6 +17,12 @@ struct
   fun makeConst n = if n>=0 then Int.toString n
                     else "-" ^ Int.toString (~n)
 
+  fun lookup x [] = NONE
+    | lookup x ((y,v)::table) = if x=y then SOME v else lookup x table
+
+  fun isIn x [] = false
+    | isIn x (y::ys) = x=y orelse isIn x ys
+
   (* CHECK THIS FUNCTION CAN YOU USE ASCIIZ? *)
   fun makeCharConst c = "'" ^ Char.toCString n ^ "'"
 
@@ -304,12 +310,12 @@ struct
           code0
         end
 
-  and compileStats [] vtable ftable exitLabel = ([], [])
+  and compileStats [] vtable ftable exitlabel = ([], [])
     | compileStats (s::ss) vtable ftable exitLabel =
         let
 	      val t1 = "_stats_"^newName()
-          val (_,code1) = compileStat s vtable ftable exitLabel
-	      val (code2, regs) = compileStats ss vtable ftable exitLabel
+          val (_,code1) = compileStat s vtable ftable exitlabel
+	      val (code2, regs) = compileStats ss vtable ftable exitlabel
     	in
     	  (code1 @ code2, t1 :: regs)
 	    end
