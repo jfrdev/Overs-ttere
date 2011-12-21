@@ -253,7 +253,8 @@ register *)
           val t          = "_cond_"^newName()
           val l1         = "_while1_"^newName()
           val l2         = "_while2_"^newName()
-          val (_,code0)  = compileExp e vtable ftable t @ [Mips.BEQ(t,"1", l1)]
+          val (_,code0)  = compileExp e vtable ftable t
+          code0 = code0 @ [Mips.BEQ(t,"1", l1)]
           val code1      = compileStat s1 vtable ftable exitLabel
         in
           code0 @ [Mips.J l2, Mips.LABEL l1] @ code1 @ code0 @ [Mips.LABEL l2]
