@@ -102,7 +102,24 @@ er for symbolsk overskud i koden (kende forskel på imidiate og registre).
 
 
 \subsection{compileExp}
-bubber was here ->X<-
+
+
+\subsection{While-løkke}
+
+\subsection{Block}
+Funktionen \texttt{makeVtable} laver og returnere et nyt vtable'. Blokken
+hægter derpå vtable' foran det gamle vtable, og kalder \texttt{compileStat} med
+denne. Derudover kaldes \texttt{RegAlloc} til at allokere registre til de nye
+variable.
+
+Da vtable er hægtet bagpå vtable', vil variable i vtable automatisk bevare
+sine værdier efter blokken, om de er blevet tilskrevet nye værdier eller ej,
+idet variable, som ikke er erklæret igen indenfor blokken, stadig tilgås via
+vtable og derfor tilgås de samme registre.
+
+Når blokken slutter, bliver vtable' ikke brugt mere (i og med det ikke er givet
+videre til nogen efterfølgende erklæringer), og vil derfor automatisk blive
+fjernet af spildopsamleren.
 
 \textit{StringConst} er en tegnreference, som først trækker længden af strengen
 plus et endeelement (nullbyte) fra stakpegeren og derpå bruger ASCIIZ til at
