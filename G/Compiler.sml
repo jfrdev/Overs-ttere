@@ -101,9 +101,9 @@ struct
             (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
                                          Mips.MOVE(place,t)])
           | (Type.Int, Mem x)       =>
-            (Type.Int, code0 @ code1 @ [Mips.SW(x,t,"0"), Mips.MOVE(place,t)])
+            (Type.Int, code0 @ code1 @ [Mips.SW(t,x,"0"), Mips.MOVE(place,t)])
           | (Type.Char, Mem x)      =>
-            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(x,t,"0"),
+            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(t,x,"0"),
                                          Mips.MOVE(place,t)]) 
           | (ty, Reg x) =>
 	    (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
@@ -228,7 +228,8 @@ struct
           val (_, code) = compileExp e vtable ftable y1
         in
           (case lookup x vtable of
-            SOME (ty,y) => (code @ [Mips.ADD(y1,y1,y)], ty, Mem y1)
+            SOME (Type.Char,y) => (code @ [Mips.ADD(y1,y1,y)], Type.Char, Mem y1)
+          | SOME (Type.Int, y) => (code @ [Mips.SLL(y1,y1,"2"), Mips.ADD(y1,y1,y)], Type.Int, Mem y1) 
           | NONE => raise Error ("Unknown reference "^x,p))
         end
 
@@ -261,7 +262,8 @@ struct
       in
         vtable
       end
-      
+    
+
   fun compileStat s vtable ftable exitLabel =
     case s of
       S100.EX e => #2 (compileExp e vtable ftable "0")
@@ -294,7 +296,8 @@ struct
           val (_,code0)  = compileExp e vtable ftable t
           val code1      = compileStat s1 vtable ftable exitLabel
         in
-          [Mips.J l1, Mips.LABEL l2] @ code1 @ [Mips.LABEL l1] @ code0 @ [Mips.BEQ(t, "1", l2)]
+          [Mips.J l1, Mips.LABEL l2] @ code1 @ [Mips.LABEL l1] @ code0 @ [Mips.BNE(t, ZERO, l2)]
+          (* goto eval, label run bodey , evalkode, BNEt0run label_exit *)
         end
     | S100.Return (e,p) =>
         let
@@ -304,10 +307,10 @@ struct
 	     code0 @ [Mips.MOVE ("2",t), Mips.J exitLabel]
     	end
     | S100.Block (ds,ss,p) =>
-        let
-          val l1      = "_endblock_"^newName()
+       let
+         (* val l1      = "_endblock_"^newName()*)
           val vtable' = (makeVtable ds) @ vtable
-          val code0   = compileStats ss vtable' ftable l1
+          val code0   = compileStats ss vtable' ftable exitLabel
         in
           code0
         end
@@ -443,8 +446,8 @@ struct
          Mips.JR (RA,[]),
 
          Mips.LABEL "walloc",     (* Word aligned allocation*)
-         Mips.SLL ("4", "4", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
-         Mips.SUB (SP , SP , "4"),(* træk det fra SP *)
+         Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
+         Mips.SUB (SP , SP , "2"),(* træk det fra SP *)
          Mips.MOVE("2", SP ),     (* flyt det til retur registret *)
          Mips.JR (RA, []),
 

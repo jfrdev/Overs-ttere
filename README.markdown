@@ -6,9 +6,8 @@ us to have done every week. Furthermore our current process is also tracked.
 ## Pending tasks/issues
 * Write the report
 * Implement the compiler
-    * Blocks (compileStat)
-    * Ref (compileFun)
-    * Predefined functions (bottom of compiler)
+    * String implementation (.ASCIIZ)
+    * Predefined functions (walloc/balloc)
 * Test of compiler and basically everything!
 
 ## Implemented
