@@ -6,11 +6,9 @@ us to have done every week. Furthermore our current process is also tracked.
 ## Pending tasks/issues
 * Write the report
 * Implement the compiler
-    * While-loop (compileStat)
     * Blocks (compileStat)
     * Ref (compileFun)
     * Predefined functions (bottom of compiler)
-* Make sure symbols are added to vtable in correct order in Type.sml (checkDecs appends to a reversed list!)
 * Test of compiler and basically everything!
 
 ## Implemented
