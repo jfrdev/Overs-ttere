@@ -20,9 +20,12 @@
 \begin{document}
 \maketitle
 \pagebreak
+\tableofcontents
+\pagebreak
 
 \section{Indledning}
-%TODO skriv noget klogt
+Vi har implementeret en oversætter til sproget 100. Vi har lavet en lexer, parser, typechecker og en oversætter, og rapporten er opdelt herefter. 
+Vi har fulgt de syntaktiske og semantiske regler opstillet i opgavebeskrivelsen, og har testet oversætteren på samtlige vedlagte, samt mindre selvlavede, programmer uden fejl. Denne rapport beskriver og dokumentere de ændringer og tilføjelser vi har lavet, samt nogle af de overvejelser vi har gjort os.
 
 \section{Lexer}
 I lexeren har vi implementeret regulære udtryk der fanger følgende elementer:
@@ -43,13 +46,12 @@ Opslag matches ikke i lexeren som et enkelt regulært udtryk, men som to udtryk
 der matcher ``['' og ``]''. Disse gives videre til parseren.
 
 For både streng- og tegnkonstanter er der lavet nye eksterne funktioner (hhv.
-string og character). De eksterne funktioner konvertere fra C-strenge til
+string og character). De eksterne funktioner konvertere C-strenge til
 SML-strenge (vha. fromCString). Hvis dette fejler kastes en lexerError. Bemærk
-at der inden konverteringen er fjernet de tegn som omgiver en streng- eller
-tegnkonstant, altså '$\ldots$' og "$\ldots$". Slutteligt sørger der
-regulære udtryk til hver af de to at en del ugyldige strenge og tegn sorteret
-fra, ved kun at tage imod tegn mellem 32-126 i ASCII eller escape-sekvenser.
-%TODO dette kan godt formuleres pænere og udpensles mere.
+at der inden konverteringen er fjernet de tegn, som omgiver en streng- eller
+tegnkonstant, altså '$\ldots$' og "$\ldots$". Slutteligt sørger hver af de
+regulære udtryk for, at en del ugyldige strenge og tegn bliver sorteret
+fra, ved kun at tage imod tegn med talrepresentation mellem 32-126 i ASCII-standarden, eller hvis tegnene er escape-sekvenser.
 
 Lighedsoperatoren er blot et match på ``==''.
 
@@ -73,77 +75,98 @@ I parseren har vi implementeret følgende regler:
 \end{align*}
 
 Her er terminaler givet i fed og nonterminaler i kursiv. Generelt er strukturen
-fra den abstrakte syntaks fuldt, og intet er blevet ændret i denne ifm.
+fra den abstrakte syntaks fuldt, og intet er blevet ændret i denne i forbindelse med
 implementation af parseren.
 
-%TODO noget om de forskellige nonterminaler og hvorfor de er lavet som de er.
-%TODO noget om tests? og hvorfor der ikke er shift-reduces
+Vi har for at implementere disse selv erklæret alle terminalerne som tokens i 
+toppen af parseren per den abstrakte syntaks. Vi har derudover erklæret
+nonterminalen \textit{Stats} selv, som en liste af \textit{Stat}, da det denne
+bruges til er blokke, som bl.a. indeholder en række erklæringer. Vi har endvidere
+sørget for at erklære associativiteten og præcedensen af lighedsoperatoren 
+(Denne har samme præcedens som ``<'', og er ligeledes venstreassociativ).
 
-En ting vi bemærkede ifm. test af parseren, var at der steder i det parsede fra
-SeeSyntax.sml stod en # i stedet for den del af strukturen som burde have været
+En ting vi bemærkede i forbindelse med test af parseren, var at der steder i det parsede fra
+SeeSyntax.sml stod en ``#'' i stedet for den del af strukturen som burde have været
 der. Dette viste sig dog at hænge sammen med, at SeeSyntax ikke kan vise
 strukturen hvis indlejringen bliver for dyb.
 
+
 \section{Typechecker}
+Vi har tilføjet en reference som datatypen \textbf{Ref} af en datatype. Referencen kan ikke referere til en anden reference, idet dette bliver stoppet i parseren. Derfor kan der kun være heltalsreferencer og tegnreferencer.
 
+\subsection{checkExp}
+\textbf{charConst} er en datatype \textbf{Char}.
+\textbf{stringConst} er en datatype \textbf{Ref(Char)}, i.e. en tegnreference, der peger på det første element i strengen, der er gemt i hukommelsen.
 
-% Hvad har vi implementeret?
-% Hvordan er typer lavet
-% hvad har vi ændret markant, og hvilke funktioner har vi tilføjet
+Alle deklereringer er blevet udvidet til også at patternmatche på tegn og tegnreferencer. Derudover har vi lavet sigende fejlmeddelelser til hver tilfælde af deklerering. Generelt er der taget højde for, om en reference af nogen art indgår i en deklerering, da disse har meget specifikke regler (se opgavebeskrivelsen). Derudover behandles alle tegnkonstant som heltal og omvendt, hvorfor de typisk er det sidste patternmatch, der dækker alle tilfælde (men hvor referencer fanges før).
 
-% Særdeles spændende er return check :P
+\subsubsection{Call}
+Denne er modificeret for at kunne acceptere at tegnkonstanter bliver brugt som heltal og omvendt, og desuden referencer.
+Den kalder compareTypeLists, der sammenligner listen af brugte argumenter med argumentlisten for den givne funktionen. 
 
-% Vi har fortolket således at man godt kan gøre følgende
-% char *x; x* = 'a' + 1
+compareTypeLists patternmatcher ikke udtømmende, men det er unødvendigt, idet Call selv tjekker for, om begge argumentlister er lige lange -- hvis de ikke er, er der en fejl.
+
+\subsubsection{Equal}
+Returnere altid et heltal (for boolean), hvor alle typer kan sammenlignes med sig selv, men kun referencer må sammenlignes med andre referencer, og da tegnkonstanter behandles som heltal, må disse også sammenlignes med heltal.
+
+\subsection{checkLval}
+Vi har implementeret dereferencer i \textit{Deref} og opslag i \textit{Lookup}, der begge returnere typen referencen peger på.
+
+\subsection{checkStat}
+\subsubsection{While-løkker}
+\textit{while} blev implementeret på samme måde som den allerede implementerede 
+\textit{IF-THEN}-erklæring.
+
+\subsubsection{Returerklæringer}
+Problemet med erklæringer og returkald er, at det skal være sikkert, at en
+funktion returnere. Derfor vurderede vi alle erklæringer på, hvorvidt de var
+\textit{sikre} eller \textit{farlige}. Efter en funktions erklæringer er kørt
+igennem, skal det tjekkes om hvorvidt der er nogen sikre -- altså om der altid
+vil nåes et returkald.
+En deklerering er eksempelvis sikker, mens en \textit{IF-THEN}-erklæring er
+farlig, fordi et returkald i THEN-delen ikke er garanteret at blive kørt, fordi
+det afhænger af betingelsen. En \textit{IF-THEN-ELSE}-erklæring kan være farlig,
+fordi det ikke er sikkert, at der er et sikkert returkald i både \textit{THEN-}
+og \textit{ELSE}-delen.
+
+Udover de sikre og usikre erklæringer, skal det samtidig tjekkes, at returkald
+har den rette type. Dette valgte vi også at gøre efter at have kørt alle
+erklæringer igennem samtidig med tjek om der var et sikkert returkald.
+
+For at holde styr på returtyper og sikre returkald tilføjede vi
+et \textbf{rtable} og en booleansk værdi \textbf{b}. \textbf{b} starter med at
+være sand. Hvis en erklæring er farlig, er alle undererklæringer til denne også
+farlige, hvorfor b-værdien vil være falsk for alle disse.
+
+Når en returerkæring nåes, bliver der tilføjet både returtypen
+og sikkerheden af returkaldet til \textbf{rtable}.
+
+Efter erklæringerne er kørt igennem \texttt{checkStat}, tjekkes alle typer med returtypen og om
+der optræder blot en sand værdi i \textbf{rtable}, med kald til funktionerne henholdsvis \texttt{compareTypes} og \texttt{comparertable}, da det betyder at der er et sikkert returkald. Alt dette bliver kaldt ud fra \texttt{checkFunDec}, der bliver kaldt i \texttt{checkProg}, der er hovedfunktionen i typecheckeren.
+
+\subsubsection{Blokke}
+En blokerklæring fungere som et nyt virkefelt (i.e. et nyt \textbf{vtable'}), 
+der kan definere nye lokale variable og samtidig tilgå og overskrive variable 
+udenfor virkefelt (i.e. \textbf{vtable}). Da tabellerne er implementeret som 
+lister, er det nye \textbf{vtable'} blot det gamle \textbf{vtable} med alle nye variable, fra det nye virkefelt, foran. 
+Derved, når \texttt{lookup} gennemgår listen, vil alle nye variable tilgåes først, så hvis der er en variabel, der principielt har overskrevet en tidligere variabel af samme navn, vil den nye blive returneret. Hvis der ikke er en ny variabel vil, vil den gamle variabel fra \textbf{vtable} blive returneret.
+
+Når virkefeltet ender, når blokken ender, vil \textbf{vtable'} automatisk ophøre med at eksistere, idet det ikke vil blive vidergivet til nogen efterfølgende erklæringer eller deklereringer, og derfor vil spildopsamleren fjerne den.
+
+\textbf{vtable'} bliver lavet i \texttt{checkdecs} og efterfølgende hægtet foran på \textbf{vtable}, og \texttt{checkStats} bliver kaldt med det nye \textbf{vtable'}, hvor \texttt{checkStats} kalder \texttt{checkStat} for hver erklæring i blokken.
+     
+\subsubsection{Forhåndserklærede funktioner}
+I Typecheckeren har vi udvidet det faste \textit{ftable} med de angivne funktioner:
+\texttt{Walloc, balloc, getstring} og \texttt{putstring}, implementationen af disse er beskrevet i afsnittet om Oversætteren.
+
 
 \section{Oversætter}
-
-\subsection{Generelt}
+\subsection{Overordnet}
 Vi har tilføjet en konstant \textit{ZERO}, der repræsentere registeret 0. Dette
 er for symbolsk overskud i koden (kende forskel på imidiate og registre).
 
-
 \subsection{compileExp}
-
-
-\subsection{While-løkke}
-For at oversætte while-løkken laver vi først to labels vha \texttt{newname} funktionen.
-Herefter bruges \texttt{compileExp} til at oversætte evaulerings udtrykket, og \texttt{compileStat} 
-til at evaluere alt koden i kroppen af løkken. Herefter sættes det sammen i en koderække som her:\\
-\\texttt{\center J eval, LABEL body, bodycode, LABEL eval, evalcode, BNE eval,ZERO,body}\\
-Denne opbygning spare et ubetinget-hop ved hver gennemkørsel hvis man sammenligner med at evaluere 
-først og derefter køre koden og springe op til evalueringen igen.
-
-
-
-\subsection{Block}
-Funktionen \texttt{makeVtable} laver og returnere et nyt vtable'. Blokken
-hægter derpå vtable' foran det gamle vtable, og kalder \texttt{compileStat} med
-denne. Derudover kaldes \texttt{RegAlloc} til at allokere registre til de nye
-variable.
-
-Da vtable er hægtet bagpå vtable', vil variable i vtable automatisk bevare
-sine værdier efter blokken, om de er blevet tilskrevet nye værdier eller ej,
-idet variable, som ikke er erklæret igen indenfor blokken, stadig tilgås via
-vtable og derfor tilgås de samme registre.
-
-Når blokken slutter, bliver vtable' ikke brugt mere (i og med det ikke er givet
-videre til nogen efterfølgende erklæringer), og vil derfor automatisk blive
-fjernet af spildopsamleren.
-
-vtable' bliver lavet ud fra principperne fra \texttt{compileFun}, der laver vtable. Vi har derfor genbrugt og lettere modificeret en del kodestykker fra denne.
-
-\textit{StringConst} er en tegnreference, som først trækker længden af strengen
-plus et endeelement (nullbyte) fra stakpegeren og derpå bruger ASCIIZ til at
-lægge strengen på stakken (over stakpegeren).
-
-\textit{Assaign} patternmatcher på int, ref(int) og ref(char) i sidste instans,
-idet de alle skal håndteres ens. Resten håndteres enkeltvis, idet de
-henholdsvis er en tegnkonstant, der skal tjekkes på 8 bit, en tegnkonstant
-der tilgår stakken på 8 bit og en heltalsværdi der også tilgår
-stakken, men på 32 bit.
-
-\subsection{Behandling af tegnkonstanter}
+\subsubsection{Tegnkonstanter}
 Vi har tilføjet en funktion \texttt{makeCharConst}, der omdanner en
 sml-tegnkonstant til en C-strengstegnkonstant der kan behandles af Mars
 (singlequotes bibeholdes i strengen).
@@ -158,6 +181,65 @@ uspecificerede opførsel.
 I compileExp, når en tegnkonstant evalueres, sørges for, at kun de første 8 ud
 af 32 bit bliver sat, ved at kalde MIPS-instruktionen andi på registeret med
 sig selv og konstanten 255. 
+
+\subsubsection{Strengkonstant}
+En strengkonstant er implementeret på følgende måde. Der er lavet en global 
+variabelreference \textbf{strings} i toppen af oversætteren. Denne bruges således
+at hver gang en strengkonstant defineres bliver der tilføjet et nyt label og en
+asciiz instruktion med strengenkonstanten, som så tilføjes \textbf{strings}. 
+Endvidere bliver der til til selve det udtryk strengkonstanten kommer fra tilføjet
+en \texttt{Mips.LA}, som peger på den label strengkonstanten har fået. 
+Slutteligt bliver der under datadirektivet (i bunden af oversætteren) tilføjet den
+liste af strenge og deres labels som \textbf{strings} indeholder.
+
+\subsubsection{Assignoperatoren}
+Patternmatcher på int, ref(int) og ref(char) i sidste instans,
+idet de alle skal håndteres ens. Resten håndteres enkeltvis, idet de
+henholdsvis er en tegnkonstant, der skal tjekkes på 8 bit, en tegnkonstant
+der tilgår stakken på 8 bit og en heltalsværdi der også tilgår
+stakken, men på 32 bit.
+
+\subsubsection{Plus- og minusoperatoren}
+Både plus- og minusoperatoren er udvidet til at håndtere referencer og tegn. 
+Generelt kan siges at hvis der skal trækkes fra eller lægges til en heltalsreference
+skal det andet argument ganges med fire, da man skal flytte en word-adresse og 
+ikke en byte-adresse. For alle andre tilfælde skal der blot foretages en plus- eller
+minusoperation. Det er ikke nødvendigt at fange ugyldige tilfælde og kaste fejl,
+da disse bliver fanget af typecheckeren.
+
+\subsubsection{Lighedsoperatoren}
+Her oprettes to symboler der skal reservere registre, og en label. Bagefter evalueres udtrykkene på hver siden af operatoren ved hjælp af \texttt{compileExp} og hvert deres symbol så vi er sikre på vi har resultaterne i hvert deres register. Koden derfra føjes sammen og efterfølges af et \texttt{Mips.LI} somloader 0 i et register og et \texttt{Mips.BNE} der sammenligner de to udtryk og hopper til den erklærede label hvis de ikke er ens, ellers sættes det register der blev nulstillet sat til 1 og til sidst tilføjes den label som \texttt{BNE} hopper til.
+
+\subsection{compileStat}
+\subsubsection{While-løkke}
+For at oversætte while-løkken laver vi først to labels vha \texttt{newname} funktionen.
+Herefter bruges \texttt{compileExp} til at oversætte evaulerings udtrykket, og \texttt{compileStat} 
+til at evaluere alt koden i kroppen af løkken. Herefter sættes det sammen i en koderække som her:
+\begin{center}
+\texttt{J eval, LABEL body, bodycode, LABEL eval, evalcode, BNE eval,ZERO,body}
+\end{center}
+
+Denne opbygning spare et ubetinget-hop ved hver gennemkørsel hvis man sammenligner med at evaluere 
+først og derefter køre koden og springe op til evalueringen igen.
+
+\subsubsection{Blokke}
+Funktionen \texttt{makeVtable} laver og returnere et nyt vtable'. Blokken
+hægter derpå vtable' foran det gamle vtable, og kalder \texttt{compileStat} med
+denne. Derudover kaldes \texttt{RegAlloc} til at allokere registre til de nye
+variable.
+
+Da vtable er hægtet bagpå vtable', vil variable i vtable automatisk bevare
+sine værdier efter blokken, om de er blevet tilskrevet nye værdier eller ej,
+idet variable, som ikke er erklæret igen indenfor blokken, stadig tilgås via
+vtable og derfor tilgås de samme registre.
+
+Når blokken slutter, bliver vtable' ikke brugt mere (i og med det ikke er givet
+videre til nogen efterfølgende erklæringer), og vil derfor automatisk blive
+fjernet af mosml's spildopsamler.
+
+vtable' bliver lavet ud fra principperne fra \texttt{compileFun}, der laver 
+vtable. Vi har derfor genbrugt og lettere modificeret en del kodestykker fra 
+denne.
 
 \subsection{Lval}
 Vi tilføjede dereference og opslag, som begge tilgår stakken. Derfor valgte vi
@@ -177,6 +259,74 @@ Når en tegnkonstant hentes, sørges samtidig for, i \texttt{lval}, at kun de
 første 8 ud af 32 bits i registeret sættes (til tegnkonstanten), hvor resten
 sættes til 0. Dette sikre at gamle data i registeret ikke er tilgængelige.
 
+
+\section{Predefinerede funktioner}
+Ligesom i Parseren er funktionerne her også tilføjet til det faste \textit{ftable},
+Koden til disse funktioner er implementeret under \texttt{putint} og \texttt{getint}.
+
+\subsection{walloc($n$)}
+Denne funktioner allokere $n$ maskinord i hoben, startene fra hvorend hobpegepinden står når funktionen kaldes. Da et maskinord er 4 bytes vil det rum der skal allokeres svare til $4\dot n$ bytes, da vi ikke har en multiplikations insturktion har vi benyttet \texttt{SLL} da et binært tal kan fordobles hvis man skifter det 2 bits mod vestre. Dette tal trækkes så fra hobpegepinden, for at sikre plads til pegepinden trækkes yderligere 4 fra værdien. hobpegepinden kopieres da til returregistret \$2 og \texttt{JR} kaldes på returadresse-registret.
+
+\subsection{balloc($n$)}
+Balloc er en simplere implementation af \texttt{walloc} idet den allokere $n$ bytes på hoben, så trækkes der yderligere et byte fra for at sikre plads til pegepinden. Den nye hobpegepind kopieres så til returregistret \$2 og \texttt{JR} kaldes på returadresse-registret.
+
+\subsection{putstring($s$)}
+putstring tager modtager en reference $s$ til starten af en streng og udskriver strengen frem til 1. nulbyte. Funktionen reservere 8 byte på stakken og gemmer registrene \$2 og \$4 der. Bagefter flytter den sit argument $s$ til register \$4 og værdien 4 til register \$2 (4 er trappen til print_string i MIPS/SPIM syscalls) bagefter kaldes \texttt{Mips.SYSCALL} som udføre operationen. Herefter flyttes \textit{_cr_} til \$4 og \texttt{Mips.SYSCALL} køres igen. Herefter genskabes \$2 og \$2 fra stakken og pladsen deallokeres, og \texttt{JR} kaldes på returadresse-registret.
+
+\subsection{getstring($n$)}
+Denne funktion allokere $n$ bytes på hoben og indlæse en streng fra standard-in og gemme den der.
+Den starter med at reservere $n$ bytes på hoben og rykker $n$ til \$5, og derefter hobpegepinden til \$4 som argument, så loader den værdien 8 til \$2 og \texttt{Mips.SYSCALL} køres, så flyttes hobpegepinden (som peger på starten af strengen) til \$2,0 og \texttt{JR} kaldes på returadresse-registret.
+
+
+\section{Test og korrekthed}
+For at teste korrektheden af oversætteren har vi gjort følgende:
+\begin{itemize}
+\item Vi har brugt SeeSyntax.sml til at teste parseren og lexeren
+\item Vi har oversat alle error-filer for at se hvorvidt disse giver korrekte fejlmeddelelser
+\item Vi har oversat alle testprogrammer og testet disse vha. Mars, for at teste compileren
+\end{itemize}
+
+I forbindelse med lexeren og parseren har vi testet ved at kigge på den struktur
+som genereres. Dette er gjort med SeeSyntax.sml. Senere er disse tjekket indirekte
+ifm. test af den resterende oversætter (Da denne er afhængig af at lexeren og
+parseren fungere korrekt).
+
+I forbindelse med typecheckeren har vi forsøgt oversætte alle de forskellige 
+error*.100 filer. Dette har vi brugt til at debugge typecheckeren, således at alle
+filerne nu giver de korrekte fejlmeddelelser\footnote{Bemærk at en enkelt af 
+filerne skal give en leksikalsk fejl og ikke en typefejl. Dette sker også.}.
+
+I forbindelse med selve oversætteren har vi brugt de givne testprogrammer til
+at teste, og endvidere har vi skrevet vores egne små programmer og brugt disse 
+når vi har forsøgt at finde bestemte fejl i oversætteren. Vi har med den endelige
+version af oversætteren testet alle de forskellige testprogrammer, der alle 
+returnere korrekt med passende input. Specifikt har vi testet alle 
+heltalsorteringsprogrammerne med forskellige antal heltal, i forskellige 
+rækkefølger, hvilket alle har givet de korrekte sorterede heltal tilbage. 
+Vi har endvidere testet alle strengsorteringsprogrammerne med strenge af 
+forskellige længder, hvilket også har returneret de korrekte sorterede strenge.
+Vi har slutteligt også testet fibonacci-programmet, copy-programmet, 
+dfa-programmet og charref-programmet. Alle disse har med den endelige version af
+oversætteren også givet korrekte returværdier for forskellige tests.
+
+I forbindelse med debugging af oversætteren har vi selv skrevet små programmer 
+der har hjulpet med at afsløre en mistænkt fejl som vi har haft svært ved at
+udpege med de givne programmer (oftest hvis vi har haft mere end en fejl). Et 
+eksempel på dette er ifm. implementationen af strengkonstanter i oversætteren. 
+Her havde vi først allokeret plads på stakken (altså vha. SP) til strengen. Det 
+viste sig dog hurtigt, at dette resulterede i, at man ikke kunne få adgang til
+tidligere elementer på stakken, da stakpegeren var blevet flyttet, og ikke blev 
+flyttet tilbage, eftersom vi ikke har mulighed for at frigøre strenge og 
+lignende når disse først er lagt ned. Vi rettede derfor dette til at gemme 
+strenge i data-direktivet, og så referere til deres første tegn vha. af 
+\texttt{Mips.LA}.
+
+
 \section{Konklusion}
-% overall hvad virker hvad gør ikke!
+Korrektheden af oversætteren kommer til udtryk ved dels at have opført sig korrekt i samtlige testprogrammer og dels ved vores dokumentation af vores løsning og implementation. Vi kan ikke garantere, at oversætteren aggere korrekt i alle situationer, men som udgangspunkt kan vi ikke sætte finger på noget potentielt forkert.
+
+Hovedproblemet i implementationen har været referencer, idet disse følger en masse specielle regler og desuden fungere har deres data liggende på lageret, hilket gør brugen af disse det mere besværligt sammenlignet med heltal eller tegnkonstanter.
+
+%TODO tilføj
+
 \end{document}
