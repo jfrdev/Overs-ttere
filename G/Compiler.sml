@@ -219,7 +219,7 @@ struct
 	     | NONE => raise Error ("Unknown variable "^x,p))
     | S100.Deref (x,p) =>
         (case lookup x vtable of
-           SOME (ty,y) => ([],ty,Mem y)
+           SOME (Type.Ref(ty),y) => ([],ty,Mem y)
          | NONE => raise Error ("Unknown reference "^x,p))
     | S100.Lookup (x,e,p) =>
         let
@@ -227,8 +227,8 @@ struct
           val (_, code) = compileExp e vtable ftable y1
         in
           (case lookup x vtable of
-            SOME (Type.Char,y) => (code @ [Mips.ADD(y1,y1,y)], Type.Char, Mem y1)
-          | SOME (Type.Int, y) => (code @ [Mips.SLL(y1,y1,"2"), Mips.ADD(y1,y1,y)], Type.Int, Mem y1) 
+            SOME (Type.Ref(Type.Char),y) => (code @ [Mips.ADD(y1,y1,y)], Type.Char, Mem y1)
+          | SOME (Type.Ref(Type.Int), y) => (code @ [Mips.SLL(y1,y1,"2"), Mips.ADD(y1,y1,y)], Type.Int, Mem y1) 
           | NONE => raise Error ("Unknown reference "^x,p))
         end
 
