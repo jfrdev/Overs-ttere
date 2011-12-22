@@ -297,7 +297,6 @@ struct
           val code1      = compileStat s1 vtable ftable exitLabel
         in
           [Mips.J l1, Mips.LABEL l2] @ code1 @ [Mips.LABEL l1] @ code0 @ [Mips.BNE(t, ZERO, l2)]
-          (* goto eval, label run bodey , evalkode, BNEt0run label_exit *)
         end
     | S100.Return (e,p) =>
         let
@@ -308,7 +307,6 @@ struct
     	end
     | S100.Block (ds,ss,p) =>
        let
-         (* val l1      = "_endblock_"^newName()*)
           val vtable' = (makeVtable ds) @ vtable
           val code0   = compileStats ss vtable' ftable exitLabel
         in
@@ -442,18 +440,18 @@ struct
          Mips.LI("2","4"),        (* Prepare putstring syscall *)
          Mips.SYSCALL,            (* do syscall *)
          Mips.LA("4","_cr_"),
-	 Mips.SYSCALL,            (* write CR *)
+	     Mips.SYSCALL,            (* write CR *)
          Mips.JR (RA,[]),
 
          Mips.LABEL "walloc",     (* Word aligned allocation*)
          Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
-         Mips.SUB (SP , SP , "2"),(* træk det fra SP *)
-         Mips.MOVE("2", SP ),     (* flyt det til retur registret *)
+         Mips.SUB (HP , HP , "2"),(* træk det fra SP *)
+         Mips.MOVE("2", HP ),     (* flyt det til retur registret *)
          Mips.JR (RA, []),
 
          Mips.LABEL "balloc",     (* Byte allocation *)
-         Mips.SUB (SP , SP , "4"),(* træk argumentet fra SP *)
-         Mips.MOVE("2", SP ),     (* flyt SP til retur *)
+         Mips.SUB (HP , HP , "4"),(* træk argumentet fra SP *)
+         Mips.MOVE("2", HP ),     (* flyt SP til retur *)
          Mips.JR (RA, []),
 
          Mips.LABEL "getstring",  (* getstring *)
