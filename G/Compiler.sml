@@ -74,7 +74,7 @@ struct
          Mips.ANDI (place, place, "255")])
     | S100.StringConst (s,pos) =>
         let
-          val l1 = newName()
+          val l1 = "_stringConst_"^newName()
         in
           strings := !strings @ [Mips.LABEL l1, Mips.ASCIIZ(s)];          
           (Type.Ref(Type.Char), [Mips.LA (place,l1)])
@@ -451,8 +451,8 @@ struct
          Mips.JR (RA,[]),
 
          Mips.LABEL "walloc",     (* Word aligned allocation*)
-         Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
-         Mips.SUB (HP , HP , "2"),(* træk det fra SP *)
+         Mips.SLL ("4", "4", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
+         Mips.SUB (HP , HP , "4"),(* træk det fra SP *)
          Mips.MOVE("2", HP ),     (* flyt det til retur registret *)
          Mips.JR (RA, []),
 
@@ -482,9 +482,8 @@ struct
 	 Mips.LABEL "_cr_",       (* carriage return string *)
 	 Mips.ASCIIZ "\n",
 	 Mips.ALIGN "2"]
-
-     @ !strings @
-
+     (*@ !strings @*)
+@
 	 [Mips.LABEL "_heap_",     (* heap space *)
 	 Mips.SPACE "100000"]
     end
