@@ -19,6 +19,13 @@ struct
   fun getType t (S100.Val (f,p)) = convertType t
     | getType t (S100.Ref (f,p)) = Ref(convertType t)
 
+  fun compareTypes [] [] = true
+    | compareTypes t::tt s::ss =
+      case (t,s) of
+           (Ref _, Ref _) => compareTypes tt ss
+         | (t1,s1)        => if (t1=Int orelse t1=Char) andalso (t2=Int orelse
+         t2=Char) then compareTypes tt ss else false
+
   (* lookup function for symbol table as list of (name,value) pairs *)
   fun lookup x []             = NONE
     | lookup x ((y,v)::table) = if x=y then SOME v else lookup x table
@@ -63,15 +70,16 @@ struct
                                 else raise Error ("Type mismatch in less-than comparison",p))
     | S100.Call (f,es,p) => 
         (case lookup f ftable of
-	      NONE => raise Error ("Unknown function: "^f,p)
+	       NONE => raise Error ("Unknown function: "^f,p)
     	 | SOME (parT,resultT) =>
            let
              val argT = List.map (fn e => checkExp e vtable ftable) es
            in
-	     if parT = argT
+	         if 
+               List.length parT = List.length argT andalso compareTypes parT argT
              then resultT
-	     else raise Error ("Arguments don't match declaration of "^f, p)
-	   end)
+	         else raise Error ("Arguments don't match declaration of "^f, p)
+	       end)
     | S100.Equal (e1,e2,p) =>
         (case (checkExp e1 vtable ftable, 
                checkExp e2 vtable ftable) of
