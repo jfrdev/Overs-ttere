@@ -70,8 +70,7 @@ struct
 	   [Mips.LUI (place, makeConst (n div 65536)),
 	   Mips.ORI (place, place, makeConst (n mod 65536))])
     | S100.CharConst (c,pos) =>
-        (Type.Char, [Mips.LI (place, makeCharConst c),
-         Mips.ANDI (place, place, "255")])
+        (Type.Char, [Mips.LI (place, makeCharConst c)])
     | S100.StringConst (s,pos) =>
         let
           val l1 = "_stringConst_"^newName()
@@ -79,8 +78,6 @@ struct
           strings := !strings @ [Mips.LABEL l1, Mips.ASCIIZ(s)];          
           (Type.Ref(Type.Char), [Mips.LA (place,l1)])
         end
-       (* (Type.Ref(Type.Char), [Mips.ADDI(SP, SP, makeConst(~(String.size(s)+1))),
-         Mips.ASCIIZ(s), Mips.MOVE(place, SP)])*)
     | S100.LV lval =>
         let
 	  val (code,ty,loc) = compileLval lval vtable ftable
@@ -93,9 +90,7 @@ struct
       | (Type.Int, Mem x)  =>
           (Type.Int, code @ [Mips.LW(place,x,"0")])
       | (Type.Char, Mem x) =>
-          (Type.Char, code @ [Mips.LB(place,x,"0")] @
-          [Mips.ANDI(place,place,"255")])
-      | ( _, _) => raise Error ("Typechecker failed me:'(",(0,0)) (* TODO: FIXME: Make better!!! *)
+          (Type.Char, code @ [Mips.LB(place,x,"0")])
 	end
     | S100.Assign (lval,e,p) =>
         let
@@ -105,16 +100,13 @@ struct
 	in
 	  case (ty,loc) of
             (Type.Char, Reg x)      =>
-            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.MOVE (x,t),
-                                         Mips.MOVE(place,t)])
+            (Type.Char, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE(place,t)])
           | (Type.Int, Mem x)       =>
             (Type.Int, code0 @ code1 @ [Mips.SW(t,x,"0"), Mips.MOVE(place,t)])
           | (Type.Char, Mem x)      =>
-            (Type.Char, code0 @ code1 @ [Mips.ANDI(t,t,"255"), Mips.SB(t,x,"0"),
-                                         Mips.MOVE(place,t)]) 
+            (Type.Char, code0 @ code1 @ [Mips.SB(t,x,"0"), Mips.MOVE(place,t)]) 
           | (ty, Reg x) =>
 	    (ty, code0 @ code1 @ [Mips.MOVE (x,t), Mips.MOVE (place,t)])
-          | ( _, _) => raise Error ("Typechecker failed me :'(",p)  (* TODO: FIXME: Make better!!! *)
 	end
     | S100.Plus (e1,e2,pos) =>
         let
@@ -444,10 +436,17 @@ struct
 	 Mips.JR (RA,[]),
 
          Mips.LABEL "putstring",  (* putstring function *)
+         Mips.ADDI(SP,SP,"-8"),
+         Mips.SW ("2",SP,"0"),    (* save used registers *)
+         Mips.SW ("4",SP,"4"),
+         Mips.MOVE ("4","2"),     (* Move argument to $4 *)
          Mips.LI("2","4"),        (* Prepare putstring syscall *)
          Mips.SYSCALL,            (* do syscall *)
          Mips.LA("4","_cr_"),
 	     Mips.SYSCALL,            (* write CR *)
+         Mips.LW ("2",SP,"0"),    (* reload used registers *)
+         Mips.LW ("4",SP,"4"),
+         Mips.ADDI(SP,SP,"8"),
          Mips.JR (RA,[]),
 
          Mips.LABEL "walloc",     (* Word aligned allocation*)
@@ -462,8 +461,8 @@ struct
          Mips.JR (RA, []),
 
          Mips.LABEL "getstring",  (* getstring *)
-         Mips.SUB (HP,HP,"4"),    (* reserve space for string on stack *)
-         Mips.MOVE ("5","4"),     (* move argument to correct register *)
+         Mips.SUB (HP,HP,"2"),    (* reserve space for string on stack *)
+         Mips.MOVE ("5","2"),     (* move argument to correct register *)
          Mips.MOVE ("4",HP),      (* put start of buffer in argument *)
          Mips.LI ("2","8"),       (* prepare syscall *)
          Mips.SYSCALL,            (* make syscall *)
@@ -482,8 +481,7 @@ struct
 	 Mips.LABEL "_cr_",       (* carriage return string *)
 	 Mips.ASCIIZ "\n",
 	 Mips.ALIGN "2"]
-     (*@ !strings @*)
-@
+     @ !strings @
 	 [Mips.LABEL "_heap_",     (* heap space *)
 	 Mips.SPACE "100000"]
     end
