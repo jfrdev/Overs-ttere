@@ -9,6 +9,7 @@ struct
 
   (* Name generator.  Call with, e.g., t1 = "tmp"^newName () *)
   val counter = ref 0
+  val strings = ref ([])
 
   fun newName () = (counter := !counter + 1;
                   "_" ^ Int.toString (!counter)^ "_")
@@ -72,8 +73,14 @@ struct
         (Type.Char, [Mips.LI (place, makeCharConst c),
          Mips.ANDI (place, place, "255")])
     | S100.StringConst (s,pos) =>
-        (Type.Ref(Type.Char), [Mips.ADDI(SP, SP, makeConst(~(String.size(s)+1))),
-         Mips.ASCIIZ(s), Mips.MOVE(place, SP)])
+        let
+          val l1 = newName()
+        in
+          strings := !strings @ [Mips.LABEL l1, Mips.ASCIIZ(s)];          
+          (Type.Ref(Type.Char), [Mips.LA (place,l1)])
+        end
+       (* (Type.Ref(Type.Char), [Mips.ADDI(SP, SP, makeConst(~(String.size(s)+1))),
+         Mips.ASCIIZ(s), Mips.MOVE(place, SP)])*)
     | S100.LV lval =>
         let
 	  val (code,ty,loc) = compileLval lval vtable ftable
@@ -455,12 +462,12 @@ struct
          Mips.JR (RA, []),
 
          Mips.LABEL "getstring",  (* getstring *)
-         Mips.SUB (SP,SP,"4"),    (* reserve space for string on stack *)
+         Mips.SUB (HP,HP,"4"),    (* reserve space for string on stack *)
          Mips.MOVE ("5","4"),     (* move argument to correct register *)
-         Mips.MOVE ("4",SP),      (* put start of buffer in argument *)
+         Mips.MOVE ("4",HP),      (* put start of buffer in argument *)
          Mips.LI ("2","8"),       (* prepare syscall *)
          Mips.SYSCALL,            (* make syscall *)
-         Mips.MOVE("2",SP),        (* put pointer in return register *)
+         Mips.MOVE("2",HP),        (* put pointer in return register *)
          Mips.JR (RA, []),
 
 
@@ -474,9 +481,11 @@ struct
 	 Mips.ALIGN "2",
 	 Mips.LABEL "_cr_",       (* carriage return string *)
 	 Mips.ASCIIZ "\n",
-	 Mips.ALIGN "2",
+	 Mips.ALIGN "2"]
 
-	 Mips.LABEL "_heap_",     (* heap space *)
+     @ !strings @
+
+	 [Mips.LABEL "_heap_",     (* heap space *)
 	 Mips.SPACE "100000"]
     end
 
