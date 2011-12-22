@@ -107,13 +107,12 @@ er for symbolsk overskud i koden (kende forskel på imidiate og registre).
 
 
 \subsection{While-løkke}
-Opbygningen af whileløkken er inspireret af opgave 1.C fra ugeopgave 4. Hvor vi 
-Vi bruger først \texttt{compileExp} til at oversætte udtrykket som er 
-betingelsen i løkken. Efter den kode det producere appender vi så en 
-\texttt{BEQ} Som hopper til $l1$ hvis betingelsen evaluerede til true. Efter 
-dette appendes et \texttt{Jump} til $l2$ så appendes \texttt{LABEL} $l1$ så 
-appendes den kode der er kroppen i while-løkken, og så evalueringen (med 
-\texttt{BEQ} igen, og derefter \texttt{LABEL} $l2$.
+For at oversætte while-løkken laver vi først to labels vha \texttt{newname} funktionen.
+Herefter bruges \texttt{compileExp} til at oversætte evaulerings udtrykket, og \texttt{compileStat} 
+til at evaluere alt koden i kroppen af løkken. Herefter sættes det sammen i en koderække som her:\\
+\\texttt{\center J eval, LABEL body, bodycode, LABEL eval, evalcode, BNE eval,ZERO,body}\\
+Denne opbygning spare et ubetinget-hop ved hver gennemkørsel hvis man sammenligner med at evaluere 
+først og derefter køre koden og springe op til evalueringen igen.
 
 
 
