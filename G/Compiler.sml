@@ -127,7 +127,7 @@ struct
       | (_, Type.Ref(Type.Char)) =>
           (Type.Ref(Type.Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
       | (_, _)              =>
-          (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)])
+          (print "hejsa"; (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)]))
 	end
     | S100.Minus (e1,e2,pos) =>
         let
@@ -244,7 +244,7 @@ struct
               val y = newName ()
               val (x,ty,loc) = (case s of 
                                   S100.Val (x,p) => (x, t, x^y)
-                                | S100.Ref (x,p) => (x, t, x^y))
+                                | S100.Ref (x,p) => (x, Type.Ref(t), x^y))
               val rname = Int.toString r
               val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
             in
@@ -354,7 +354,7 @@ struct
                  val y = newName ()
                  val (x,ty,loc) = (case s of
                          S100.Val (x,p) => (x, t, x^y)
-                       | S100.Ref (x,p) => (x, t, x^y))
+                       | S100.Ref (x,p) => (x, Type.Ref(t), x^y))
                  val rname = Int.toString r
                  val (code, vtable, stackSpace) = moveArgs1 ss t ds (r+1)
                in
@@ -450,13 +450,13 @@ struct
          Mips.JR (RA,[]),
 
          Mips.LABEL "walloc",     (* Word aligned allocation*)
-         Mips.SLL ("4", "4", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
-         Mips.SUB (HP , HP , "4"),(* træk det fra SP *)
+         Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
+         Mips.SUB (HP , HP , "2"),(* træk det fra SP *)
          Mips.MOVE("2", HP ),     (* flyt det til retur registret *)
          Mips.JR (RA, []),
 
          Mips.LABEL "balloc",     (* Byte allocation *)
-         Mips.SUB (HP , HP , "4"),(* træk argumentet fra SP *)
+         Mips.SUB (HP , HP , "2"),(* træk argumentet fra SP *)
          Mips.MOVE("2", HP ),     (* flyt SP til retur *)
          Mips.JR (RA, []),
 

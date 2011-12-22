@@ -19,12 +19,14 @@ struct
   fun getType t (S100.Val (f,p)) = convertType t
     | getType t (S100.Ref (f,p)) = Ref(convertType t)
 
-  fun compareTypes [] [] = true
-    | compareTypes t::tt s::ss =
+  fun compareTypeLists [] [] = true
+    | compareTypeLists (t::tt) (s::ss) =
       case (t,s) of
-           (Ref _, Ref _) => compareTypes tt ss
-         | (t1,s1)        => if (t1=Int orelse t1=Char) andalso (t2=Int orelse
-         t2=Char) then compareTypes tt ss else false
+           (Ref _, Ref _) => compareTypeLists tt ss
+         | (t1,s1)        => if (t1=Int orelse t1=Char) andalso
+                                (s1=Int orelse s1=Char)
+                             then compareTypeLists tt ss
+                             else false
 
   (* lookup function for symbol table as list of (name,value) pairs *)
   fun lookup x []             = NONE
@@ -76,7 +78,7 @@ struct
              val argT = List.map (fn e => checkExp e vtable ftable) es
            in
 	         if 
-               List.length parT = List.length argT andalso compareTypes parT argT
+               List.length parT = List.length argT andalso compareTypeLists parT argT
              then resultT
 	         else raise Error ("Arguments don't match declaration of "^f, p)
 	       end)
@@ -129,9 +131,13 @@ struct
                          extend (List.rev sids) (convertType t) (checkDecs ds)
 
   fun compareTypes t []            = true
-    | compareTypes t1 ((t2,_)::tt) = if t1 = t2
-                                     then compareTypes t1 tt
-                                     else false 
+    | compareTypes t1 ((t2,_)::tt) = 
+        case (t1,t2) of 
+          (Ref _, Ref _) => compareTypes t1 tt
+        | (ty1,ty2)      =>  if (ty1=Int orelse ty1=Char) andalso
+                                  (ty2=Int orelse ty2=Char)
+                               then compareTypes t1 tt
+                               else false 
 
   fun comparertable []          = false
     | comparertable ((_,b)::tt) = if b = true
@@ -180,7 +186,7 @@ struct
   fun checkFunDec (t,sf,decs,body,p) ftable =
       let
         val rtable = checkStat body (checkDecs decs) ftable [] true
-        val k = (convertType t)
+        val k = getType t sf
       in
         case (comparertable rtable, compareTypes k rtable) of
           (false,_)    =>  raise Error ("Return statement missing or not guaranteed",p)
