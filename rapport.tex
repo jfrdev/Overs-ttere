@@ -24,8 +24,14 @@
 \pagebreak
 
 \section{Indledning}
-Vi har implementeret en oversætter til sproget 100. Vi har lavet en lexer, parser, typechecker og en oversætter, og rapporten er opdelt herefter. 
-Vi har fulgt de syntaktiske og semantiske regler opstillet i opgavebeskrivelsen, og har testet oversætteren på samtlige vedlagte, samt mindre selvlavede, programmer uden fejl. Denne rapport beskriver og dokumentere de ændringer og tilføjelser vi har lavet, samt nogle af de overvejelser vi har gjort os.
+Vi har implementeret en oversætter til sproget 100. Vi har lavet en lexer,
+parser, typechecker og en oversætter, og rapporten er opdelt herefter.
+Vi har fulgt de syntaktiske og semantiske regler opstillet i opgavebeskrivelsen,
+og har testet oversætteren på samtlige vedlagte, samt mindre selvlavede,
+programmer uden fejl. Denne rapport beskriver og dokumentere de ændringer og
+tilføjelser vi har lavet, samt nogle af de overvejelser vi har gjort os.
+
+Vedlagt rapporten er alle programdele, vi har ændret i.
 
 \section{Lexer}
 I lexeren har vi implementeret regulære udtryk der fanger følgende elementer:
@@ -323,10 +329,16 @@ strenge i data-direktivet, og så referere til deres første tegn vha. af
 
 
 \section{Konklusion}
-Korrektheden af oversætteren kommer til udtryk ved dels at have opført sig korrekt i samtlige testprogrammer og dels ved vores dokumentation af vores løsning og implementation. Vi kan ikke garantere, at oversætteren aggere korrekt i alle situationer, men som udgangspunkt kan vi ikke sætte finger på noget potentielt forkert.
+Korrektheden af oversætteren kommer til udtryk ved dels at have opført sig
+korrekt i samtlige testprogrammer og dels ved vores dokumentation af vores
+løsning og implementation. Vi kan ikke garantere, at oversætteren aggere korrekt
+i alle situationer, men som udgangspunkt kan vi ikke sætte finger på noget
+potentielt forkert.
 
-Hovedproblemet i implementationen har været referencer, idet disse følger en masse specielle regler og desuden fungere har deres data liggende på lageret, hilket gør brugen af disse det mere besværligt sammenlignet med heltal eller tegnkonstanter.
-
+Hovedproblemet i implementationen har været referencer, idet disse følger en
+masse specielle regler og desuden fungere har deres data liggende på lageret,
+hilket gør brugen af disse det mere besværligt sammenlignet med heltal eller
+tegnkonstanter.
 %TODO tilføj
 
 \end{document}
