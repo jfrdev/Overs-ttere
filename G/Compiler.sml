@@ -83,14 +83,16 @@ struct
 	  val (code,ty,loc) = compileLval lval vtable ftable
 	in
 	  case (ty,loc) of
-	    (Type.Int, Reg x)  =>
-	      (Type.Int, code @ [Mips.MOVE (place,x)])
-      | (Type.Char, Reg x) =>
+	    (Type.Int, Reg x)        =>
+	      (Type.Int, code @ [Mips.MOVE(place,x)])
+      | (Type.Char, Reg x)      =>
           (Type.Char, code @ [Mips.MOVE(place,x)])
-      | (Type.Int, Mem x)  =>
+      | (Type.Int, Mem x)       =>
           (Type.Int, code @ [Mips.LW(place,x,"0")])
-      | (Type.Char, Mem x) =>
+      | (Type.Char, Mem x)      =>
           (Type.Char, code @ [Mips.LB(place,x,"0")])
+      | (Type.Ref(ty1), Reg x) =>
+          (Type.Ref(ty1), code @ [Mips.MOVE(place,x)])
 	end
     | S100.Assign (lval,e,p) =>
         let
@@ -127,7 +129,7 @@ struct
       | (_, Type.Ref(Type.Char)) =>
           (Type.Ref(Type.Char), code1 @ code2 @ [Mips.ADD (place,t1,t2)])
       | (_, _)              =>
-          (print "hejsa"; (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)]))
+          (Type.Int, code1 @ code2 @ [Mips.ADD (place,t1,t2)])
 	end
     | S100.Minus (e1,e2,pos) =>
         let
@@ -435,46 +437,41 @@ struct
 	 Mips.SYSCALL,
 	 Mips.JR (RA,[]),
 
-         Mips.LABEL "putstring",  (* putstring function *)
-         Mips.ADDI(SP,SP,"-8"),
-         Mips.SW ("2",SP,"0"),    (* save used registers *)
-         Mips.SW ("4",SP,"4"),
-         Mips.MOVE ("4","2"),     (* Move argument to $4 *)
-         Mips.LI("2","4"),        (* Prepare putstring syscall *)
-         Mips.SYSCALL,            (* do syscall *)
-         Mips.LA("4","_cr_"),
-	     Mips.SYSCALL,            (* write CR *)
-         Mips.LW ("2",SP,"0"),    (* reload used registers *)
-         Mips.LW ("4",SP,"4"),
-         Mips.ADDI(SP,SP,"8"),
-         Mips.JR (RA,[]),
+     Mips.LABEL "putstring",  (* putstring function *)
+     Mips.ADDI(SP,SP,"-8"),
+     Mips.SW ("2",SP,"0"),    (* save used registers *)
+     Mips.SW ("4",SP,"4"),
+     Mips.MOVE ("4","2"),     (* Move argument to $4 *)
+     Mips.LI("2","4"),        (* Prepare putstring syscall *)
+     Mips.SYSCALL,            (* do syscall *)
+     Mips.LA("4","_cr_"),
+     Mips.SYSCALL,            (* write CR *)
+     Mips.LW ("2",SP,"0"),    (* reload used registers *)
+     Mips.LW ("4",SP,"4"),
+     Mips.ADDI(SP,SP,"8"),
+     Mips.JR (RA,[]),
 
-         Mips.LABEL "walloc",     (* Word aligned allocation*)
-         Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
-         Mips.SUB (HP , HP , "2"),(* træk det fra SP *)
-         Mips.MOVE("2", HP ),     (* flyt det til retur registret *)
-         Mips.JR (RA, []),
+     Mips.LABEL "walloc",     (* Word aligned allocation*)
+     Mips.SLL ("2", "2", "2"),(* gang argumentet med 4, skift med 2, for word aligned *)
+     Mips.SUB (HP , HP , "2"),(* træk det fra SP *)
+     Mips.ADDI (HP,HP,"-4"),   (* Gør plads til det n'te word*)
+     Mips.MOVE("2", HP ),     (* flyt det til retur registret *)
+     Mips.JR (RA, []),
 
-         Mips.LABEL "balloc",     (* Byte allocation *)
-         Mips.SUB (HP , HP , "2"),(* træk argumentet fra SP *)
-         Mips.MOVE("2", HP ),     (* flyt SP til retur *)
-         Mips.JR (RA, []),
+     Mips.LABEL "balloc",     (* Byte allocation *)
+     Mips.SUB (HP , HP , "2"),(* træk argumentet fra SP *)
+     Mips.ADDI(HP,HP,"-1"),   (* Gør pladstil den n'te byte*)
+     Mips.MOVE("2", HP ),     (* flyt SP til retur *)
+     Mips.JR (RA, []),
 
-         Mips.LABEL "getstring",  (* getstring *)
-         Mips.SUB (HP,HP,"2"),    (* reserve space for string on stack *)
-         Mips.MOVE ("5","2"),     (* move argument to correct register *)
-         Mips.MOVE ("4",HP),      (* put start of buffer in argument *)
-         Mips.LI ("2","8"),       (* prepare syscall *)
-         Mips.SYSCALL,            (* make syscall *)
-         Mips.MOVE("2",HP),        (* put pointer in return register *)
-         Mips.JR (RA, []),
-
-
-         (* MIPS NOTER:
-          * Mips.LI (rd, v)
-          * rd <- OR 0x00 V
-          * Tilsvare psudokode fir Load Immidiate og ligger v i rd.
-          *)
+     Mips.LABEL "getstring",  (* getstring *)
+     Mips.SUB (HP,HP,"2"),    (* reserve space for string on stack *)
+     Mips.MOVE ("5","2"),     (* move argument to correct register *)
+     Mips.MOVE ("4",HP),      (* put start of buffer in argument *)
+     Mips.LI ("2","8"),       (* prepare syscall *)
+     Mips.SYSCALL,            (* make syscall *)
+     Mips.MOVE("2",HP),        (* put pointer in return register *)
+     Mips.JR (RA, []),
 
 	 Mips.DATA "",
 	 Mips.ALIGN "2",

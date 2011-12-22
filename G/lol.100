@@ -1,5 +1,0 @@
-int main()
-{
-	putstring(getstring(10));
-	return 0;
-}
